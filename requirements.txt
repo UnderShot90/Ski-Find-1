@@ -1,0 +1,116 @@
+roblem Specification
+
+There are currently no centralized platform that combines location-based resort discovery with the key details skiers actually need: cost, snow depth, trail conditions, ratings, and distance. Planning a ski trip means piecing together information from multiple sources, which is inefficient and often leads to poor decisions or missed opportunities.
+SkiFind addresses this gap by aggregating resort data into a single, easy-to-navigate interface, and adding community features — user profiles, skill levels, ratings, and favourites — that make the platform useful beyond a single visit.
+
+
+Student Learning Objectives
+
+Full-stack development involves gaining hands-on experience building a complete web application that connects a user interface with a backend server and database. This process helps in understanding how different parts of a system work together to deliver a seamless user experience.
+API integration focuses on learning how to fetch, parse, and use live data from external sources, such as real-time snow conditions and pricing. This data can then be incorporated into a localized system to provide up-to-date and relevant information to users.
+Algorithm implementation is about applying logical problem-solving skills to design an efficient recommendation engine. This engine can filter and match user preferences, like skill level and distance, to deliver the most suitable results.
+Database design helps develop practical data modeling skills by creating structured schemas. These schemas are used to securely manage user authentication, store dynamic resort data, and handle user-generated feedback.
+System testing and debugging improve the ability to trace how data moves through a system, identify performance issues, and fix errors. This ensures that the application runs smoothly and reliably.
+The software development lifecycle (SDLC) involves managing a project from start to finish. This includes planning the architecture, creating data flow diagrams, developing the system, and delivering the final implementation.
+
+Requirements Collection and Analysis
+
+Functional requirements define what the system should do. Users must be able to register and log in, as well as create and customize their own profile. Each user can set a skill level, either using a beginner-to-pro scale or a 1–5 star rating system. Users should also be able to rate ski resorts and leave comments about their experiences on the mountain.
+Each mountain resort will have its own profile page that includes basic information and a link to the resort’s official website. Users can filter resorts based on factors such as lift ticket prices, reviews, difficulty level, available trails, and snow conditions. Additionally, users can favorite specific mountains so they appear at the top of their list for easy access. An admin role is included, with the ability to delete inappropriate or unwanted comments.
+The system will also integrate external APIs to provide important data, including snow conditions, ski ticket prices, and distances to various resorts. This ensures that users have access to accurate and up-to-date information when making decisions.
+Non-functional requirements describe how the system should perform. Usability is important, meaning the interface should be simple and intuitive, even for first-time users. Security must be maintained by protecting API keys and avoiding the storage of sensitive personal data. Scalability is also necessary so the system can expand to include more resorts or regions in the future. Finally, reliability is critical, ensuring the system continues to function properly even if one of the external APIs fails.
+
+
+Solution Process and Design
+
+
+
+Use Case Diagram (UCD)
+
+System Context Diagram (SCD)
+
+Data Flow Diagram (DFD)
+
+
+
+
+
+Prototyping
+
+Preliminary Data Store Design
+
+
+
+
+Benchmark 1: User Profile Systems
+The first benchmark focuses on building the foundation of the platform through user account functionality. This includes implementing secure user registration and login systems, along with the ability to create, update, and delete user accounts. It will also involve setting up the database structure and models needed to store user information securely. Profile management features will allow users to personalize and manage their accounts.
+
+Benchmark 2: Search Information and Comments
+The second benchmark centers on integrating external data sources to provide live ski resort information. This includes connecting ski, maps, and weather APIs to gather real-time data such as snow depth and resort pricing. Users will be able to search for ticket prices, lifts, and trail information, while also filtering results by skill level, location, and price. In addition, users will be able to create comments and view feedback for each resort.
+
+Benchmark 3: Filtering, Search, and Travel Data
+This benchmark focuses on improving the search experience by combining trail conditions, lift details, and distance metrics into a more optimized recommendation system. The platform will also obtain and display weather data for both the user’s current location and their destination resort. Travel-related data, such as distance and estimated travel details, will also be displayed to help users better plan their trips.
+
+Benchmark 4: Admin Features
+The final benchmark introduces administrative tools for managing platform content and user activity. This includes creating an admin dashboard for content moderation, implementing soft-delete functionality for public comments, and providing tools to manage user accounts and review flagged content. These features will help maintain a safe and organized platform environment.
+
+
+Proposed Tools for Implementation
+
+Frameworks: React
+Database: MongoDB
+Project Management Tool: GitHub
+Source Control Tool: GitHub
+
+
+
+Time Schedule for CSC521
+
+Weeks 1–3: Benchmark 1 – User Profile Systems
+ During the first three weeks, the focus is on building the core user system. This includes setting up the project structure, configuring the database, and creating models for user data. Secure registration and login functionality will be implemented, followed by features that allow users to create, update, and delete their profiles. By the end of this phase, a fully functional user account system should be in place.
+Weeks 4–7: Benchmark 2 – Search Information and Comments
+ These weeks focus on integrating external APIs and enabling search functionality. The system will connect to ski, maps, and weather APIs to gather live data such as snow conditions and pricing. This data will be stored and displayed within the application. Users will be able to search and filter resorts based on skill level, location, and price. Commenting functionality will also be introduced, allowing users to leave and view feedback on resorts.
+Weeks 8–11: Benchmark 3 – Filtering, Search, and Travel Data
+ This phase enhances the search experience by combining multiple data sources, including trail information, lift details, and distance metrics. The system will be optimized to provide better recommendations. Weather data for both the user’s location and destination will be displayed, along with travel-related information such as distance and route details. The goal is to create a more refined and useful trip-planning experience.
+Weeks 12–14: Benchmark 4 – Admin Features and Finalization
+ The final weeks focus on administrative tools and polishing the system. An admin dashboard will be developed for moderating content, including the ability to soft-delete comments and manage flagged content. User account management features for admins will also be implemented. The project will conclude with final testing, debugging, performance improvements, and preparation for presentation.
+
+
+
+
+Grading Scheme for CSC521
+
+Propose a grading scheme that allocates percentages to each benchmark or component. Ensure that the presentation of the completed project counts for 10% of the total grade. The meeting with your CSC521 faculty supervisor must count for 10% of the total grade.
+Benchmark 1: 15%
+Benchmark 2: 15%
+Benchmark 3: 15%
+Benchmark 4: 25%
+Final report: 10%
+Presentation:10%
+Weekly meetings: 10%
+
+
+Deliverables for CSC521
+
+The following deliverable components are required. It includes components that are to be delivered upon the completion of CSC521 (not CSC520). You are just listing what will be included for the implemented project.
+
+Depending on your specific project implementation requirements, additional deliverables may be required by your CSC 521 faculty supervisor.
+
+
+A final report upon the completion of CSC521. The report must include the following minimal components. They can be listed in the report in different orders. 
+Amendments to the proposal. These amendments must be approved by the project supervisor during CSC521. 
+All design diagrams (e.g., UCD, DFD, ERD, etc.) updated/enhanced with details determined during the implementation of the project
+Documentation of completed project functionality (test results, screenshots, video capture of project execution, etc.) 
+Sample output (e.g., screenshots) 
+Executables or URL (if the application is hosted in the cloud) 
+Description of the source control tool used for the project implementation (e.g., Git/GitHub)
+Project journal: a narrative of the progress of the project, in clear, concise English, including any problems encountered and how said problems were addressed 
+Project postmortem: a summary of what was learned from the project and (based on that experience) discussion of how various aspects of the project might have been approached differently 
+A list of what areas of the proposal (if any) were not completed, including reasons why 
+
+Presentation Document for CSC521
+presentation of the completed project (PowerPoint format), including screenshots of the functioning project 
+
+
+
+Supervisor Confirmation

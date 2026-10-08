@@ -11,6 +11,7 @@ import HomePage from "./components/pages/homePage";
 import Login from "./components/pages/loginPage";
 import Signup from "./components/pages/registerPage";
 import PrivateUserProfile from "./components/pages/privateUserProfilePage";
+import ResortsPage from "./components/pages/resortsPage";
 import { createContext, useState, useEffect } from "react";
 import getUserInfo from "./utilities/decodeJwt";
 
@@ -31,6 +32,7 @@ const App = () => {
         <Routes>
           <Route exact path="/" element={<LandingPage />} />
           <Route exact path="/home" element={<HomePage />} />
+          <Route exact path="/resorts" element={<ResortsPage />} />
           <Route exact path="/login" element={<Login />} />
           <Route exact path="/signup" element={<Signup />} />
           <Route path="/privateUserProfile" element={<PrivateUserProfile />} />

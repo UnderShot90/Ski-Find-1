@@ -1,28 +1,34 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 
-const Landingpage = () => {
-    return (
-        <div className="min-h-screen bg-spotify-black flex items-center justify-center px-4">
-            <div className="bg-spotify-card rounded-2xl shadow-xl p-10 max-w-md w-full text-center">
-                <h1 className="text-2xl font-bold text-white mb-1">Professor Brockenbrough's User Skeleton App</h1>
-                <p className="text-spotify-muted text-sm mb-8">A starting point for an application.</p>
-                <div className="flex gap-3 justify-center">
-                    <a
-                        href="/signup"
-                        className="px-6 py-2 rounded-full bg-spotify-green hover:bg-spotify-green-hover text-black font-bold transition-colors shadow-sm"
-                    >
-                        Sign Up
-                    </a>
-                    <a
-                        href="/login"
-                        className="px-6 py-2 rounded-full border border-spotify-muted text-white hover:border-white font-bold transition-colors"
-                    >
-                        Log In
-                    </a>
-                </div>
+const LandingPage = () => (
+    <main className="min-h-screen bg-spotify-black px-5 py-16 text-white">
+        <section className="mx-auto flex min-h-[60vh] max-w-5xl flex-col justify-center border-b border-spotify-hover pb-14">
+            <p className="mb-4 text-sm font-semibold uppercase tracking-[0.2em] text-spotify-green">Conditions, without the guesswork</p>
+            <h1 className="max-w-3xl text-5xl font-bold leading-tight">Ski Find</h1>
+            <p className="mt-5 max-w-xl text-lg text-spotify-muted">
+                Find a mountain, check the latest resort conditions, and keep your go-to destinations close.
+            </p>
+            <div className="mt-8 flex flex-wrap gap-3">
+                <Link to="/resorts" className="rounded-md bg-spotify-green px-6 py-3 font-bold text-black transition-colors hover:bg-spotify-green-hover">
+                    Explore resorts
+                </Link>
+                <Link to="/signup" className="rounded-md border border-spotify-muted px-6 py-3 font-semibold text-white transition-colors hover:border-white">
+                    Create account
+                </Link>
             </div>
-        </div>
-    );
-};
+        </section>
+        <section className="mx-auto grid max-w-5xl gap-8 py-10 sm:grid-cols-2">
+            <div>
+                <h2 className="text-lg font-semibold">Find your next mountain</h2>
+                <p className="mt-2 text-sm text-spotify-muted">Search the resort directory and narrow it down by name, region, or country.</p>
+            </div>
+            <div>
+                <h2 className="text-lg font-semibold">Keep a shortlist</h2>
+                <p className="mt-2 text-sm text-spotify-muted">Sign in to save resorts to your personal list for your next trip.</p>
+            </div>
+        </section>
+    </main>
+);
 
-export default Landingpage;
+export default LandingPage;
