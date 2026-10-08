@@ -4,6 +4,33 @@ import { Link, useNavigate } from 'react-router-dom';
 import '../../css/resorts.css';
 
 const API_URL = process.env.REACT_APP_BACKEND_SERVER_URI || 'http://localhost:8081';
+const RESORT_CACHE_KEY = 'skiFindResortDirectory';
+const FALLBACK_RESORTS = [
+    { slug: '49-degrees-north', name: '49 Degrees North', country: 'US', region: 'WA', latitude: 48.302353, longitude: -117.564011 },
+    { slug: 'alpine-meadows', name: 'Alpine Meadows', country: 'US', region: 'CA', latitude: 39.148201, longitude: -120.150902 },
+    { slug: 'alta', name: 'Alta', country: 'US', region: 'UT', latitude: 40.583828, longitude: -111.63726 },
+    { slug: 'alyeska', name: 'Alyeska', country: 'US', region: 'AK', latitude: 60.961445, longitude: -149.102676 },
+    { slug: 'arapahoe-basin', name: 'Arapahoe Basin', country: 'US', region: 'CO', latitude: 39.6425, longitude: -105.8719 },
+    { slug: 'aspen-highlands', name: 'Aspen Highlands', country: 'US', region: 'CO', latitude: 39.1822, longitude: -106.855 },
+    { slug: 'aspen-mountain', name: 'Aspen Mountain', country: 'US', region: 'CO', latitude: 39.1875, longitude: -106.8186 },
+    { slug: 'beaver-creek', name: 'Beaver Creek', country: 'US', region: 'CO', latitude: 39.6042, longitude: -106.5165 },
+    { slug: 'breckenridge', name: 'Breckenridge', country: 'US', region: 'CO', latitude: 39.4817, longitude: -106.0384 },
+    { slug: 'brighton', name: 'Brighton', country: 'US', region: 'UT', latitude: 40.598, longitude: -111.5832 },
+    { slug: 'copper-mountain', name: 'Copper Mountain', country: 'US', region: 'CO', latitude: 39.5022, longitude: -106.15 },
+    { slug: 'crystal-mountain', name: 'Crystal Mountain', country: 'US', region: 'WA', latitude: 46.928, longitude: -121.504 },
+    { slug: 'jackson-hole', name: 'Jackson Hole', country: 'US', region: 'WY', latitude: 43.5875, longitude: -110.8279 },
+    { slug: 'keystone', name: 'Keystone', country: 'US', region: 'CO', latitude: 39.6061, longitude: -105.9717 },
+    { slug: 'mammoth-mountain', name: 'Mammoth Mountain', country: 'US', region: 'CA', latitude: 37.6308, longitude: -119.0326 },
+    { slug: 'park-city', name: 'Park City', country: 'US', region: 'UT', latitude: 40.6514, longitude: -111.508 },
+    { slug: 'palisades-tahoe', name: 'Palisades Tahoe', country: 'US', region: 'CA', latitude: 39.1969, longitude: -120.2358 },
+    { slug: 'snowbird', name: 'Snowbird', country: 'US', region: 'UT', latitude: 40.583, longitude: -111.655 },
+    { slug: 'steamboat', name: 'Steamboat', country: 'US', region: 'CO', latitude: 40.4572, longitude: -106.8045 },
+    { slug: 'telluride', name: 'Telluride', country: 'US', region: 'CO', latitude: 37.9375, longitude: -107.8123 },
+    { slug: 'vail', name: 'Vail', country: 'US', region: 'CO', latitude: 39.6403, longitude: -106.3742 },
+    { slug: 'whistler-blackcomb', name: 'Whistler Blackcomb', country: 'Canada', region: 'British Columbia', latitude: 50.1163, longitude: -122.9574 },
+    { slug: 'alpe-lusia-san-pellegrino', name: 'Alpe Lusia / San Pellegrino', country: 'IT', region: 'Trentino', latitude: 46.3844919, longitude: 11.7834612 },
+    { slug: 'arabba', name: 'Arabba / Marmolada', country: 'IT', region: 'Veneto', latitude: 46.4972239, longitude: 11.8720102 }
+];
 
 function extractResorts(payload) {
     if (Array.isArray(payload)) return payload;
@@ -25,8 +52,11 @@ function normalizeResort(source) {
     const country = typeof source.country === 'object' ? source.country?.name : source.country;
     const region = typeof source.region === 'object' ? source.region?.name : source.region;
     const coordinates = source.coordinates || source.location || {};
-    const latitude = Number(source.latitude ?? source.lat ?? coordinates.latitude ?? coordinates.lat ?? (Array.isArray(coordinates) ? coordinates[1] : undefined));
-    const longitude = Number(source.longitude ?? source.lng ?? source.lon ?? coordinates.longitude ?? coordinates.lng ?? coordinates.lon ?? (Array.isArray(coordinates) ? coordinates[0] : undefined));
+    let latitude = Number(source.latitude ?? source.lat ?? coordinates.latitude ?? coordinates.lat ?? (Array.isArray(coordinates) ? coordinates[1] : undefined));
+    let longitude = Number(source.longitude ?? source.lng ?? source.lon ?? coordinates.longitude ?? coordinates.lng ?? coordinates.lon ?? (Array.isArray(coordinates) ? coordinates[0] : undefined));
+    if (String(country).toUpperCase() === 'IT' && Math.abs(latitude) < 20 && Math.abs(longitude) >= 35 && Math.abs(longitude) <= 55) {
+        [latitude, longitude] = [longitude, latitude];
+    }
 
     return {
         slug: String(slug).toLowerCase(),
@@ -94,11 +124,25 @@ const ResortsPage = () => {
                     .map(normalizeResort)
                     .filter(Boolean);
                 setResorts(normalized);
-                if (!normalized.length) setError('The resort list is empty or returned in an unexpected format.');
+                if (!normalized.length) {
+                    setError('The live resort list is unavailable. Showing the built-in directory instead.');
+                    setResorts(FALLBACK_RESORTS);
+                    return;
+                }
+                localStorage.setItem(RESORT_CACHE_KEY, JSON.stringify(normalized));
             })
             .catch((requestError) => {
                 if (requestError.code !== 'ERR_CANCELED') {
-                    setError(requestError.response?.data?.error || 'Could not load resorts. Check the backend and RapidAPI configuration.');
+                    const cachedResorts = (() => {
+                        try {
+                            const cached = JSON.parse(localStorage.getItem(RESORT_CACHE_KEY) || '[]');
+                            return Array.isArray(cached) && cached.length ? cached : FALLBACK_RESORTS;
+                        } catch (error) {
+                            return FALLBACK_RESORTS;
+                        }
+                    })();
+                    setResorts(cachedResorts);
+                    setError('The live resort feed is temporarily unavailable. Showing the offline directory; live resort conditions may be unavailable.');
                 }
             })
             .finally(() => setLoading(false));

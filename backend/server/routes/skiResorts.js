@@ -152,7 +152,10 @@ router.post('/nearby', async (req, res) => {
         const distances = nearestResorts.flatMap((resort, index) => {
             const distanceMeters = matrix.distances[index];
             const durationSeconds = matrix.travelTimes[index];
-            return Number.isFinite(distanceMeters) && Number.isFinite(durationSeconds) ? [{
+            const isAtOrigin = resort.approximateDistance < 0.1;
+            const hasRoute = distanceMeters > 0 && durationSeconds > 0;
+            const isExactOrigin = isAtOrigin && distanceMeters === 0 && durationSeconds === 0;
+            return Number.isFinite(distanceMeters) && Number.isFinite(durationSeconds) && (hasRoute || isExactOrigin) ? [{
                 slug: resort.slug,
                 name: resort.name,
                 distance: {

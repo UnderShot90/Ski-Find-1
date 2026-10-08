@@ -2,32 +2,45 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 
 const LandingPage = () => (
-    <main className="min-h-screen bg-spotify-black px-5 py-16 text-white">
-        <section className="mx-auto flex min-h-[60vh] max-w-5xl flex-col justify-center border-b border-spotify-hover pb-14">
-            <p className="mb-4 text-sm font-semibold uppercase tracking-[0.2em] text-spotify-green">Conditions, without the guesswork</p>
-            <h1 className="max-w-3xl text-5xl font-bold leading-tight">Ski Find</h1>
-            <p className="mt-5 max-w-xl text-lg text-spotify-muted">
-                Find a mountain, check the latest resort conditions, and keep your go-to destinations close.
-            </p>
-            <div className="mt-8 flex flex-wrap gap-3">
-                <Link to="/resorts" className="rounded-md bg-spotify-green px-6 py-3 font-bold text-black transition-colors hover:bg-spotify-green-hover">
-                    Explore resorts
-                </Link>
-                <Link to="/signup" className="rounded-md border border-spotify-muted px-6 py-3 font-semibold text-white transition-colors hover:border-white">
-                    Create account
-                </Link>
+    <main className="landing-page">
+        <section className="landing-hero">
+            <div className="landing-hero-content">
+                <p className="landing-kicker"><span className="status-dot" /> Your next day on the mountain starts here</p>
+                <h1>Find your<br /><em>mountain.</em></h1>
+                <p className="landing-summary">Compare ski resorts, check current conditions, and keep the places you love within reach.</p>
+                <div className="landing-actions">
+                    <Link to="/resorts" className="button-primary">Explore resorts <span aria-hidden="true">↗</span></Link>
+                    <Link to="/signup" className="button-quiet">Create an account</Link>
+                    <Link to="/login" className="button-signin">Sign in</Link>
+                </div>
+            </div>
+            <div className="hero-caption"><span>01 / 03</span><span>Fresh tracks are closer than you think</span></div>
+        </section>
+
+        <section className="landing-content">
+            <header className="section-heading">
+                <p className="section-kicker">A better day starts with a little planning</p>
+                <h2>From first search<br />to first chair.</h2>
+            </header>
+            <div className="feature-list">
+                <article className="feature-item">
+                    <span className="feature-number">01</span>
+                    <div><h3>Find your mountain</h3><p>Browse a worldwide resort directory or find destinations by distance from a city or ZIP code.</p></div>
+                    <span className="feature-arrow" aria-hidden="true">↗</span>
+                </article>
+                <article className="feature-item">
+                    <span className="feature-number">02</span>
+                    <div><h3>Know before you go</h3><p>Open resort conditions for the latest snow, lift, trail, and weather details.</p></div>
+                    <span className="feature-arrow" aria-hidden="true">↗</span>
+                </article>
+                <article className="feature-item">
+                    <span className="feature-number">03</span>
+                    <div><h3>Keep your shortlist</h3><p>Save the places you want to ride next and return to them whenever inspiration hits.</p></div>
+                    <span className="feature-arrow" aria-hidden="true">↗</span>
+                </article>
             </div>
         </section>
-        <section className="mx-auto grid max-w-5xl gap-8 py-10 sm:grid-cols-2">
-            <div>
-                <h2 className="text-lg font-semibold">Find your next mountain</h2>
-                <p className="mt-2 text-sm text-spotify-muted">Search the resort directory and narrow it down by name, region, or country.</p>
-            </div>
-            <div>
-                <h2 className="text-lg font-semibold">Keep a shortlist</h2>
-                <p className="mt-2 text-sm text-spotify-muted">Sign in to save resorts to your personal list for your next trip.</p>
-            </div>
-        </section>
+        <footer className="landing-footer"><span>SKI FIND</span><span>Find the snow. Find your people. Find your line.</span></footer>
     </main>
 );
 

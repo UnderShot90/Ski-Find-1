@@ -27,8 +27,9 @@ const Register = () => {
   };
 
   return (
-    <div className="min-h-screen bg-spotify-black flex items-center justify-center px-4">
+    <main className="site-auth-page site-register-page">
       <div className="bg-spotify-card rounded-2xl shadow-xl p-8 w-full max-w-sm">
+        <p className="auth-kicker">Join the mountain community</p>
         <h2 className="text-2xl font-bold text-white mb-6 text-center">Create an account</h2>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -77,10 +78,10 @@ const Register = () => {
 
         <p className="text-center text-sm text-spotify-muted mt-6">
           Already have an account?{" "}
-          <Link to="/login" className="font-semibold text-white hover:text-spotify-green transition-colors">Log in</Link>
+          <Link to="/login" className="auth-inline-action">Sign in</Link>
         </p>
       </div>
-    </div>
+    </main>
   );
 };
 

@@ -17,17 +17,18 @@ const HomePage = () => {
     }, []);
 
     if (!user) return (
-        <div className="min-h-screen flex items-center justify-center bg-spotify-black">
+        <main className="site-account-page">
             <p className="text-spotify-muted text-lg">Log in to view this page.</p>
-        </div>
+        </main>
     );
 
     const { id, email, username } = user;
 
     return (
-        <div className="min-h-screen bg-spotify-black flex flex-col items-center justify-center px-4">
+        <main className="site-account-page site-home-page">
             <div className="w-full max-w-md">
                 <div className="bg-spotify-card rounded-2xl shadow-xl p-8 space-y-5">
+                    <p className="auth-kicker">Your Ski Find account</p>
                     <h1 className="text-2xl font-bold text-white">
                         Welcome back, <span className="text-spotify-green">{username}</span>
                     </h1>
@@ -55,7 +56,7 @@ const HomePage = () => {
                     </button>
                 </div>
             </div>
-        </div>
+        </main>
     );
 };
 

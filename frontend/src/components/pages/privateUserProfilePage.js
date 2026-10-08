@@ -17,9 +17,9 @@ const PrivateUserProfile = () => {
   }, []);
 
   if (!user) return (
-    <div className="min-h-screen flex items-center justify-center bg-spotify-black">
+    <main className="site-account-page">
       <p className="text-spotify-muted text-lg">Log in to view this page.</p>
-    </div>
+    </main>
   );
 
   const initials = user.username
@@ -27,21 +27,19 @@ const PrivateUserProfile = () => {
     : "?";
 
   return (
-    <div className="min-h-screen bg-spotify-black flex flex-col items-center justify-center px-4">
+    <main className="site-account-page site-profile-page">
       <div className="w-full max-w-sm text-center space-y-6">
 
-        {/* Avatar */}
         <div className="mx-auto w-24 h-24 rounded-full bg-spotify-green flex items-center justify-center text-black text-3xl font-bold shadow-lg">
           {initials}
         </div>
 
-        {/* Username + email */}
         <div>
+          <p className="auth-kicker">Mountain profile</p>
           <h1 className="text-2xl font-bold text-white">{user.username}</h1>
           <p className="text-spotify-muted text-sm mt-1">{user.email}</p>
         </div>
 
-        {/* Info card */}
         <div className="bg-spotify-card rounded-xl p-5 text-left space-y-3">
           <div>
             <p className="text-xs uppercase tracking-widest text-spotify-muted">Username</p>
@@ -57,7 +55,6 @@ const PrivateUserProfile = () => {
           </div>
         </div>
 
-        {/* Log out button */}
         <button
           onClick={() => setShowModal(true)}
           className="w-full py-3 rounded-full bg-spotify-green hover:bg-spotify-green-hover text-black font-bold transition-colors shadow-sm"
@@ -89,7 +86,7 @@ const PrivateUserProfile = () => {
           </div>
         </div>
       )}
-    </div>
+    </main>
   );
 };
 

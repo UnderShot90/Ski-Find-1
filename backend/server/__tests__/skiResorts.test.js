@@ -213,4 +213,30 @@ describe('nearby resort distances', () => {
         expect(https.get).toHaveBeenCalledTimes(1);
         expect(https.request).not.toHaveBeenCalled();
     });
+
+    test('omits destinations HERE cannot route to', async () => {
+        mockHereResponses({
+            post: [{
+                matrix: {
+                    numOrigins: 1,
+                    numDestinations: 2,
+                    distances: [0, 80467],
+                    travelTimes: [0, 3600]
+                }
+            }]
+        });
+
+        const response = await require('supertest')(app)
+            .post('/ski/nearby')
+            .send({
+                origin: { latitude: 39.7, longitude: -105 },
+                resorts: [
+                    { slug: 'unreachable', name: 'Unreachable Resort', latitude: 39.71, longitude: -105 },
+                    { slug: 'reachable', name: 'Reachable Resort', latitude: 39.8, longitude: -105.1 }
+                ]
+            });
+
+        expect(response.status).toBe(200);
+        expect(response.body.resorts.map((resort) => resort.slug)).toEqual(['reachable']);
+    });
 });

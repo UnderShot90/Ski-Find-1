@@ -38,9 +38,10 @@ const Login = () => {
   }
 
   return (
-    <div className="min-h-screen bg-spotify-black flex items-center justify-center px-4">
+    <main className="site-auth-page site-login-page">
       <div className="bg-spotify-card rounded-2xl shadow-xl p-8 w-full max-w-sm">
-        <h2 className="text-2xl font-bold text-white mb-6 text-center">Log in to Skeleton</h2>
+        <p className="auth-kicker">Welcome back</p>
+        <h2 className="text-2xl font-bold text-white mb-6 text-center">Log in to Ski Find</h2>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
@@ -80,7 +81,7 @@ const Login = () => {
           <Link to="/signup" className="font-semibold text-white hover:text-spotify-green transition-colors">Sign up</Link>
         </p>
       </div>
-    </div>
+    </main>
   );
 };
 

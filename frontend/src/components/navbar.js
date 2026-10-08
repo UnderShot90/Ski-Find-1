@@ -1,14 +1,23 @@
 import React from "react";
-import { Link } from "react-router-dom";
+import { Link, NavLink } from "react-router-dom";
 
 export default function Navbar() {
   return (
-    <nav className="bg-spotify-dark border-b border-spotify-hover">
-      <div className="max-w-2xl mx-auto px-6 py-3 flex gap-6">
-        <Link to="/" className="text-white hover:text-spotify-green font-medium transition-colors">Ski Find</Link>
-        <Link to="/resorts" className="text-white hover:text-spotify-green font-medium transition-colors">Resorts</Link>
-        <Link to="/home" className="text-white hover:text-spotify-green font-medium transition-colors">Home</Link>
-        <Link to="/privateUserProfile" className="text-white hover:text-spotify-green font-medium transition-colors">Profile</Link>
+    <nav className="site-nav" aria-label="Main navigation">
+      <div className="site-nav-inner">
+        <Link to="/" className="site-brand" aria-label="Ski Find home">
+          <span className="brand-mark" aria-hidden="true">S</span>
+          <span>Ski Find</span>
+        </Link>
+        <div className="site-nav-links">
+          <NavLink to="/resorts" className={({ isActive }) => `site-nav-link${isActive ? ' is-active' : ''}`}>Resorts</NavLink>
+          <NavLink to="/home" className={({ isActive }) => `site-nav-link${isActive ? ' is-active' : ''}`}>Home</NavLink>
+          <NavLink to="/privateUserProfile" className={({ isActive }) => `site-nav-link${isActive ? ' is-active' : ''}`}>Profile</NavLink>
+        </div>
+        <div className="site-nav-actions">
+          <Link to="/login" className="site-nav-signin">Sign in</Link>
+          <Link to="/resorts" className="site-nav-action">Find a resort <span aria-hidden="true">↗</span></Link>
+        </div>
       </div>
     </nav>
   );
