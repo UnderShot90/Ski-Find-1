@@ -3,25 +3,53 @@ const https = require('https');
 
 const router = express.Router();
 const API_HOST = 'ski-resorts-and-conditions.p.rapidapi.com';
-const GOOGLE_MAPS_HOST = 'maps.googleapis.com';
+const HERE_GEOCODING_URL = 'https://geocode.search.hereapi.com/v1/geocode';
+const HERE_MATRIX_URL = 'https://matrix.router.hereapi.com/v8/matrix';
 const MAX_MATRIX_DESTINATIONS = 25;
 
-function requestGoogle(path) {
+function parseJsonResponse(response, chunks, resolve, reject) {
+    response.on('data', (chunk) => chunks.push(chunk));
+    response.on('end', () => {
+        try {
+            const body = Buffer.concat(chunks).toString('utf8');
+            const data = body ? JSON.parse(body) : {};
+            if (response.statusCode >= 400) {
+                reject(new Error(data.cause || data.title || `HERE returned HTTP ${response.statusCode}.`));
+                return;
+            }
+            resolve(data);
+        } catch (error) {
+            reject(new Error('HERE returned an invalid response.'));
+        }
+    });
+}
+
+function requestHereGet(url) {
     return new Promise((resolve, reject) => {
-        const request = https.get(`https://${GOOGLE_MAPS_HOST}${path}`, (response) => {
+        const request = https.get(url, (response) => {
             const chunks = [];
-            response.on('data', (chunk) => chunks.push(chunk));
-            response.on('end', () => {
-                try {
-                    resolve(JSON.parse(Buffer.concat(chunks).toString('utf8')));
-                } catch (error) {
-                    reject(new Error('Google Maps returned an invalid response.'));
-                }
-            });
+            parseJsonResponse(response, chunks, resolve, reject);
         });
 
-        request.setTimeout(10000, () => request.destroy(new Error('Google Maps request timed out.')));
+        request.setTimeout(10000, () => request.destroy(new Error('HERE request timed out.')));
         request.on('error', reject);
+    });
+}
+
+function requestHerePost(url, payload) {
+    return new Promise((resolve, reject) => {
+        const request = https.request(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' }
+        }, (response) => {
+            const chunks = [];
+            parseJsonResponse(response, chunks, resolve, reject);
+        });
+
+        request.setTimeout(15000, () => request.destroy(new Error('HERE request timed out.')));
+        request.on('error', reject);
+        request.write(JSON.stringify(payload));
+        request.end();
     });
 }
 
@@ -41,20 +69,18 @@ function distanceBetween(first, second) {
     return 6371 * 2 * Math.atan2(Math.sqrt(value), Math.sqrt(1 - value));
 }
 
-function googleServiceError(response, serviceName) {
-    if (response.status === 'REQUEST_DENIED') {
-        if (/billing/i.test(response.error_message || '')) {
-            return `${serviceName} is unavailable because Google Cloud billing is not enabled.`;
-        }
-        return `${serviceName} request was denied. Check that the API is enabled and the key restrictions allow it.`;
-    }
-    return `${serviceName} failed with status ${response.status || 'unknown'}.`;
+function formatDuration(seconds) {
+    const minutes = Math.round(seconds / 60);
+    if (minutes < 60) return `${minutes} min`;
+    const hours = Math.floor(minutes / 60);
+    const remainingMinutes = minutes % 60;
+    return remainingMinutes ? `${hours} hr ${remainingMinutes} min` : `${hours} hr`;
 }
 
 router.post('/nearby', async (req, res) => {
-    const apiKey = process.env.GOOGLE_MAPS_API_KEY;
+    const apiKey = process.env.HERE_API_KEY;
     if (!apiKey) {
-        return res.status(503).json({ error: 'Google Maps is not configured. Set GOOGLE_MAPS_API_KEY on the backend.' });
+        return res.status(503).json({ error: 'HERE is not configured. Set HERE_API_KEY on the backend.' });
     }
 
     const originInput = req.body?.origin;
@@ -81,19 +107,19 @@ router.post('/nearby', async (req, res) => {
         let origin;
         let formattedOrigin;
         if (typeof originInput.address === 'string' && originInput.address.trim()) {
-            const geocodePath = `/maps/api/geocode/json?address=${encodeURIComponent(originInput.address.trim())}&key=${encodeURIComponent(apiKey)}`;
-            const geocode = await requestGoogle(geocodePath);
-            if (geocode.status === 'ZERO_RESULTS') {
+            const geocodeUrl = new URL(HERE_GEOCODING_URL);
+            geocodeUrl.searchParams.set('q', originInput.address.trim());
+            geocodeUrl.searchParams.set('apiKey', apiKey);
+            const geocode = await requestHereGet(geocodeUrl);
+            const firstResult = geocode.items?.[0];
+            if (!firstResult?.position) {
                 return res.status(400).json({ error: 'Could not find that city or ZIP code. Try a more specific location.' });
             }
-            if (geocode.status !== 'OK' || !geocode.results?.[0]?.geometry?.location) {
-                return res.status(503).json({ error: googleServiceError(geocode, 'Google Geocoding') });
-            }
             origin = {
-                latitude: Number(geocode.results[0].geometry.location.lat),
-                longitude: Number(geocode.results[0].geometry.location.lng)
+                latitude: Number(firstResult.position.lat),
+                longitude: Number(firstResult.position.lng)
             };
-            formattedOrigin = geocode.results[0].formatted_address || originInput.address.trim();
+            formattedOrigin = firstResult.title || firstResult.address?.label || originInput.address.trim();
         } else {
             origin = {
                 latitude: Number(originInput.latitude),
@@ -109,26 +135,40 @@ router.post('/nearby', async (req, res) => {
             .map((resort) => ({ ...resort, approximateDistance: distanceBetween(origin, resort) }))
             .sort((first, second) => first.approximateDistance - second.approximateDistance)
             .slice(0, MAX_MATRIX_DESTINATIONS);
-        const destinations = nearestResorts.map((resort) => `${resort.latitude},${resort.longitude}`).join('|');
-        const matrixPath = `/maps/api/distancematrix/json?origins=${encodeURIComponent(`${origin.latitude},${origin.longitude}`)}&destinations=${encodeURIComponent(destinations)}&units=imperial&key=${encodeURIComponent(apiKey)}`;
-        const matrix = await requestGoogle(matrixPath);
-        if (matrix.status !== 'OK' || !matrix.rows?.[0]?.elements) {
-            return res.status(503).json({ error: googleServiceError(matrix, 'Google Distance Matrix') });
+        const matrixUrl = new URL(HERE_MATRIX_URL);
+        matrixUrl.searchParams.set('async', 'false');
+        matrixUrl.searchParams.set('apiKey', apiKey);
+        const matrixResponse = await requestHerePost(matrixUrl, {
+            origins: [{ lat: origin.latitude, lng: origin.longitude }],
+            destinations: nearestResorts.map((resort) => ({ lat: resort.latitude, lng: resort.longitude })),
+            regionDefinition: { type: 'world' },
+            matrixAttributes: ['distances', 'travelTimes']
+        });
+        const matrix = matrixResponse.matrix;
+        if (!matrix || !Array.isArray(matrix.distances) || !Array.isArray(matrix.travelTimes)) {
+            return res.status(502).json({ error: matrixResponse.cause || matrixResponse.title || 'HERE could not calculate resort distances.' });
         }
 
         const distances = nearestResorts.flatMap((resort, index) => {
-            const element = matrix.rows[0].elements[index];
-            return element?.status === 'OK' ? [{
+            const distanceMeters = matrix.distances[index];
+            const durationSeconds = matrix.travelTimes[index];
+            return Number.isFinite(distanceMeters) && Number.isFinite(durationSeconds) ? [{
                 slug: resort.slug,
                 name: resort.name,
-                distance: element.distance,
-                duration: element.duration
+                distance: {
+                    text: `${(distanceMeters / 1609.344).toFixed(1)} mi`,
+                    value: distanceMeters
+                },
+                duration: {
+                    text: formatDuration(durationSeconds),
+                    value: durationSeconds
+                }
             }] : [];
         }).sort((first, second) => first.distance.value - second.distance.value);
 
         return res.json({ origin: formattedOrigin, resorts: distances });
     } catch (error) {
-        return res.status(502).json({ error: 'Unable to reach Google Maps.' });
+        return res.status(502).json({ error: error.message || 'Unable to reach HERE services.' });
     }
 });
 

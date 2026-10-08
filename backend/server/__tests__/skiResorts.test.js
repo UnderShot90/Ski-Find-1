@@ -2,7 +2,7 @@ const express = require('express');
 const EventEmitter = require('events');
 const { PassThrough } = require('stream');
 
-jest.mock('https', () => ({ get: jest.fn() }));
+jest.mock('https', () => ({ get: jest.fn(), request: jest.fn() }));
 
 const https = require('https');
 const skiResortsRoute = require('../routes/skiResorts');
@@ -28,20 +28,39 @@ function mockRapidApiResponse(statusCode = 200, body = '{"ok":true}') {
     });
 }
 
-function mockGoogleResponses(payloads) {
-    https.get.mockImplementation((url, options, callback) => {
-        const respond = typeof options === 'function' ? options : callback;
+function mockHereResponses({ get = [], post = [] }) {
+    https.get.mockImplementation((url, callback) => {
         const response = new PassThrough();
         response.statusCode = 200;
         response.headers = { 'content-type': 'application/json' };
         process.nextTick(() => {
-            respond(response);
-            response.end(JSON.stringify(payloads.shift()));
+            callback(response);
+            response.end(JSON.stringify(get.shift()));
         });
 
         const request = new EventEmitter();
         request.setTimeout = jest.fn();
         request.destroy = jest.fn();
+        return request;
+    });
+
+    https.request.mockImplementation((url, options, callback) => {
+        let requestBody = '';
+        const request = new EventEmitter();
+        request.setTimeout = jest.fn();
+        request.destroy = jest.fn();
+        request.write = jest.fn((chunk) => { requestBody += chunk; });
+        request.end = jest.fn(() => {
+            const response = new PassThrough();
+            response.statusCode = 200;
+            process.nextTick(() => {
+                callback(response);
+                response.end(JSON.stringify(post.shift()));
+            });
+        });
+        request.url = url;
+        request.options = options;
+        request.getBody = () => JSON.parse(requestBody);
         return request;
     });
 }
@@ -52,6 +71,7 @@ describe('ski resort API proxy', () => {
     beforeEach(() => {
         process.env.RAPIDAPI_KEY = 'test-api-key';
         https.get.mockReset();
+        https.request.mockReset();
     });
 
     afterAll(() => {
@@ -110,35 +130,36 @@ describe('ski resort API proxy', () => {
 });
 
 describe('nearby resort distances', () => {
-    const originalGoogleMapsKey = process.env.GOOGLE_MAPS_API_KEY;
+    const originalHereKey = process.env.HERE_API_KEY;
 
     beforeEach(() => {
-        process.env.GOOGLE_MAPS_API_KEY = 'test-google-key';
+        process.env.HERE_API_KEY = 'test-here-key';
         https.get.mockReset();
+        https.request.mockReset();
     });
 
     afterAll(() => {
-        if (originalGoogleMapsKey === undefined) {
-            delete process.env.GOOGLE_MAPS_API_KEY;
+        if (originalHereKey === undefined) {
+            delete process.env.HERE_API_KEY;
         } else {
-            process.env.GOOGLE_MAPS_API_KEY = originalGoogleMapsKey;
+            process.env.HERE_API_KEY = originalHereKey;
         }
     });
 
-    test('geocodes a city and returns resorts sorted by driving distance', async () => {
-        mockGoogleResponses([
-            {
-                status: 'OK',
-                results: [{ formatted_address: 'Denver, CO, USA', geometry: { location: { lat: 39.7, lng: -105 } } }]
-            },
-            {
-                status: 'OK',
-                rows: [{ elements: [
-                    { status: 'OK', distance: { text: '50 mi', value: 80467 }, duration: { text: '1 hour', value: 3600 } },
-                    { status: 'OK', distance: { text: '100 mi', value: 160934 }, duration: { text: '2 hours', value: 7200 } }
-                ] }]
-            }
-        ]);
+    test('geocodes a city and returns HERE matrix distances sorted by route length', async () => {
+        mockHereResponses({
+            get: [{
+                items: [{ title: 'Denver, CO, United States', position: { lat: 39.7, lng: -105 } }]
+            }],
+            post: [{
+                matrix: {
+                    numOrigins: 1,
+                    numDestinations: 2,
+                    distances: [80467, 160934],
+                    travelTimes: [3600, 7200]
+                }
+            }]
+        });
 
         const response = await require('supertest')(app)
             .post('/ski/nearby')
@@ -151,15 +172,22 @@ describe('nearby resort distances', () => {
             });
 
         expect(response.status).toBe(200);
-        expect(response.body.origin).toBe('Denver, CO, USA');
+        expect(response.body.origin).toBe('Denver, CO, United States');
         expect(response.body.resorts.map((resort) => resort.slug)).toEqual(['near', 'far']);
-        expect(https.get).toHaveBeenCalledTimes(2);
-        expect(https.get.mock.calls[0][0]).toContain('/maps/api/geocode/json');
-        expect(https.get.mock.calls[1][0]).toContain('/maps/api/distancematrix/json');
+        expect(response.body.resorts[0].distance).toEqual({ text: '50.0 mi', value: 80467 });
+        expect(response.body.resorts[0].duration).toEqual({ text: '1 hr', value: 3600 });
+        expect(https.get).toHaveBeenCalledTimes(1);
+        expect(String(https.get.mock.calls[0][0])).toContain('https://geocode.search.hereapi.com/v1/geocode');
+        expect(String(https.get.mock.calls[0][0])).toContain('q=Denver%2C+CO');
+        expect(https.request).toHaveBeenCalledTimes(1);
+        const matrixRequest = https.request.mock.results[0].value;
+        expect(String(matrixRequest.url)).toContain('https://matrix.router.hereapi.com/v8/matrix');
+        expect(matrixRequest.getBody().origins).toEqual([{ lat: 39.7, lng: -105 }]);
+        expect(matrixRequest.getBody().destinations).toHaveLength(2);
     });
 
-    test('returns 503 when the Google Maps key is not configured', async () => {
-        delete process.env.GOOGLE_MAPS_API_KEY;
+    test('returns 503 when the HERE API key is not configured', async () => {
+        delete process.env.HERE_API_KEY;
 
         const response = await require('supertest')(app)
             .post('/ski/nearby')
@@ -167,13 +195,11 @@ describe('nearby resort distances', () => {
 
         expect(response.status).toBe(503);
         expect(https.get).not.toHaveBeenCalled();
+        expect(https.request).not.toHaveBeenCalled();
     });
 
-    test('reports when Google Cloud billing blocks geocoding', async () => {
-        mockGoogleResponses([{
-            status: 'REQUEST_DENIED',
-            error_message: 'You must enable Billing on the Google Cloud Project.'
-        }]);
+    test('returns a clear error when HERE cannot geocode the location', async () => {
+        mockHereResponses({ get: [{ items: [] }] });
 
         const response = await require('supertest')(app)
             .post('/ski/nearby')
@@ -182,8 +208,9 @@ describe('nearby resort distances', () => {
                 resorts: [{ slug: 'alta', name: 'Alta', latitude: 40.583828, longitude: -111.63726 }]
             });
 
-        expect(response.status).toBe(503);
-        expect(response.body.error).toBe('Google Geocoding is unavailable because Google Cloud billing is not enabled.');
+        expect(response.status).toBe(400);
+        expect(response.body.error).toBe('Could not find that city or ZIP code. Try a more specific location.');
         expect(https.get).toHaveBeenCalledTimes(1);
+        expect(https.request).not.toHaveBeenCalled();
     });
 });
