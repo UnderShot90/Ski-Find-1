@@ -1,60 +1,106 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import axios from 'axios';
+import { Link } from 'react-router-dom';
 import getUserInfo from '../../utilities/decodeJwt';
 
-const HomePage = () => {
-    const [user, setUser] = useState({});
-    const navigate = useNavigate();
+const API_URL = process.env.REACT_APP_BACKEND_SERVER_URI || 'http://localhost:8081';
 
-    const handleLogout = (e) => {
-        e.preventDefault();
-        localStorage.removeItem('accessToken');
-        return navigate('/');
-    };
+const HomePage = () => {
+    const [user] = useState(() => getUserInfo());
+    const [savedResorts, setSavedResorts] = useState([]);
+    const [savedLoading, setSavedLoading] = useState(false);
+    const [savedError, setSavedError] = useState('');
+    const token = localStorage.getItem('accessToken');
 
     useEffect(() => {
-        setUser(getUserInfo());
-    }, []);
+        if (!token) return undefined;
 
-    if (!user) return (
-        <main className="site-account-page">
-            <p className="text-spotify-muted text-lg">Log in to view this page.</p>
-        </main>
-    );
+        const controller = new AbortController();
+        setSavedLoading(true);
+        axios.get(`${API_URL}/resorts`, {
+            headers: { Authorization: `Bearer ${token}` },
+            signal: controller.signal
+        })
+            .then((response) => setSavedResorts(response.data))
+            .catch((error) => {
+                if (error.code !== 'ERR_CANCELED') {
+                    setSavedError('Your saved resorts are unavailable right now.');
+                }
+            })
+            .finally(() => setSavedLoading(false));
 
-    const { id, email, username } = user;
+        return () => controller.abort();
+    }, [token]);
 
     return (
-        <main className="site-account-page site-home-page">
-            <div className="w-full max-w-md">
-                <div className="bg-spotify-card rounded-2xl shadow-xl p-8 space-y-5">
-                    <p className="auth-kicker">Your Ski Find account</p>
-                    <h1 className="text-2xl font-bold text-white">
-                        Welcome back, <span className="text-spotify-green">{username}</span>
-                    </h1>
+        <main className="site-home-dashboard">
+            <div className="dashboard-shell">
+                <header className="dashboard-heading">
+                    <div>
+                        <p className="dashboard-kicker">Ski Find / Home</p>
+                        <h1>{user ? `Welcome back, ${user.username}.` : 'Plan your next mountain day.'}</h1>
+                        <p className="dashboard-summary">Find a resort, check its conditions, and keep your next trip moving.</p>
+                    </div>
+                    <Link to="/resorts" className="dashboard-primary-link">Browse resorts <span aria-hidden="true">↗</span></Link>
+                </header>
 
-                    <div className="border-t border-spotify-hover pt-5 space-y-4">
+                <section className="dashboard-tools" aria-label="Resort tools">
+                    <Link to="/resorts" className="dashboard-tool">
+                        <span className="dashboard-tool-number">01</span>
+                        <span><strong>Find nearby</strong><small>Search by city, ZIP code, or current location.</small></span>
+                        <span className="dashboard-tool-arrow" aria-hidden="true">↗</span>
+                    </Link>
+                    <Link to="/resorts" className="dashboard-tool">
+                        <span className="dashboard-tool-number">02</span>
+                        <span><strong>Check conditions</strong><small>Open a resort for snow, lifts, trails, and weather.</small></span>
+                        <span className="dashboard-tool-arrow" aria-hidden="true">↗</span>
+                    </Link>
+                    <Link to={user ? '/privateUserProfile' : '/login'} className="dashboard-tool">
+                        <span className="dashboard-tool-number">03</span>
+                        <span><strong>{user ? 'Your account' : 'Sign in'}</strong><small>{user ? 'Manage your profile and account details.' : 'Sign in to keep a personal resort shortlist.'}</small></span>
+                        <span className="dashboard-tool-arrow" aria-hidden="true">↗</span>
+                    </Link>
+                </section>
+
+                <section className="dashboard-saved" aria-labelledby="saved-heading">
+                    <div className="dashboard-section-heading">
                         <div>
-                            <p className="text-xs uppercase tracking-widest text-spotify-muted mb-1">Username</p>
-                            <p className="text-white font-medium">{username}</p>
+                            <p className="dashboard-kicker">Your shortlist</p>
+                            <h2 id="saved-heading">Saved resorts</h2>
                         </div>
-                        <div>
-                            <p className="text-xs uppercase tracking-widest text-spotify-muted mb-1">Email</p>
-                            <p className="text-white font-medium break-all">{email}</p>
-                        </div>
-                        <div>
-                            <p className="text-xs uppercase tracking-widest text-spotify-muted mb-1">User ID</p>
-                            <p className="text-white font-mono text-sm break-all">{id}</p>
-                        </div>
+                        {user && <span className="dashboard-saved-count">{savedResorts.length}</span>}
                     </div>
 
-                    <button
-                        onClick={handleLogout}
-                        className="w-full py-3 rounded-full bg-spotify-green hover:bg-spotify-green-hover text-black font-bold transition-colors shadow-sm"
-                    >
-                        Log Out
-                    </button>
-                </div>
+                    {!user ? (
+                        <div className="dashboard-empty">
+                            <p>Sign in to save resorts and keep your next trip close.</p>
+                            <Link to="/login">Sign in</Link>
+                        </div>
+                    ) : savedLoading ? (
+                        <p className="dashboard-feedback" role="status">Loading your saved resorts…</p>
+                    ) : savedError ? (
+                        <p className="dashboard-feedback" role="status">{savedError}</p>
+                    ) : savedResorts.length ? (
+                        <div className="dashboard-saved-list">
+                            {savedResorts.slice(0, 5).map((resort) => (
+                                <Link className="dashboard-saved-row" to="/resorts" key={resort.slug}>
+                                    <span className="saved-resort-mark" aria-hidden="true">S</span>
+                                    <span className="saved-resort-info">
+                                        <strong>{resort.name}</strong>
+                                        <small>{[resort.region, resort.country].filter(Boolean).join(' / ') || 'Location unavailable'}</small>
+                                    </span>
+                                    <span className="dashboard-tool-arrow" aria-hidden="true">↗</span>
+                                </Link>
+                            ))}
+                            {savedResorts.length > 5 && <Link className="dashboard-more-link" to="/resorts">View all {savedResorts.length} saved resorts</Link>}
+                        </div>
+                    ) : (
+                        <div className="dashboard-empty">
+                            <p>No resorts saved yet. Start with a place you want to ride.</p>
+                            <Link to="/resorts">Explore the directory</Link>
+                        </div>
+                    )}
+                </section>
             </div>
         </main>
     );

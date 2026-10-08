@@ -1,8 +1,6 @@
-import React from "react";
+import React, { createContext, useState, useEffect } from "react";
 // We use Route in order to define the different routes of our application
 import { Route, Routes } from "react-router-dom";
-import './css/card.css';
-import './index.css';
 
 // We import all the components we need in our app
 import Navbar from "./components/navbar";
@@ -12,12 +10,9 @@ import Login from "./components/pages/loginPage";
 import Signup from "./components/pages/registerPage";
 import PrivateUserProfile from "./components/pages/privateUserProfilePage";
 import ResortsPage from "./components/pages/resortsPage";
-import { createContext, useState, useEffect } from "react";
 import getUserInfo from "./utilities/decodeJwt";
 
 export const UserContext = createContext();
-//test change
-//test again
 const App = () => {
   const [user, setUser] = useState();
 
@@ -30,11 +25,11 @@ const App = () => {
       <Navbar />
       <UserContext.Provider value={user}>
         <Routes>
-          <Route exact path="/" element={<LandingPage />} />
-          <Route exact path="/home" element={<HomePage />} />
-          <Route exact path="/resorts" element={<ResortsPage />} />
-          <Route exact path="/login" element={<Login />} />
-          <Route exact path="/signup" element={<Signup />} />
+          <Route path="/" element={<LandingPage />} />
+          <Route path="/home" element={<HomePage />} />
+          <Route path="/resorts" element={<ResortsPage />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/signup" element={<Signup />} />
           <Route path="/privateUserProfile" element={<PrivateUserProfile />} />
         </Routes>
       </UserContext.Provider>

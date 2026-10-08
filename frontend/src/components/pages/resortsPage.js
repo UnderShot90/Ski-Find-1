@@ -110,7 +110,9 @@ const ResortsPage = () => {
     const [error, setError] = useState('');
     const [savingSlug, setSavingSlug] = useState('');
     const [detailsBySlug, setDetailsBySlug] = useState({});
+    const [conditionErrors, setConditionErrors] = useState({});
     const [loadingDetailsSlug, setLoadingDetailsSlug] = useState('');
+    const [expandedSlug, setExpandedSlug] = useState('');
     const [location, setLocation] = useState('');
     const [nearbyResorts, setNearbyResorts] = useState(null);
     const [nearbyOrigin, setNearbyOrigin] = useState('');
@@ -247,6 +249,11 @@ const ResortsPage = () => {
                 delete next[resort.slug];
                 return next;
             });
+            setConditionErrors((current) => {
+                const next = { ...current };
+                delete next[resort.slug];
+                return next;
+            });
             return;
         }
 
@@ -256,7 +263,12 @@ const ResortsPage = () => {
             const response = await axios.get(`${API_URL}/ski/v1/resort/${encodeURIComponent(resort.slug)}`);
             setDetailsBySlug((current) => ({ ...current, [resort.slug]: getDetailFacts(response.data) }));
         } catch (requestError) {
-            setError(requestError.response?.data?.error || 'Could not load resort conditions.');
+            const status = requestError.response?.status;
+            const message = status === 429
+                ? 'Live conditions are temporarily rate-limited. Try again later.'
+                : requestError.response?.data?.error || 'Could not load live resort conditions.';
+            setDetailsBySlug((current) => ({ ...current, [resort.slug]: [] }));
+            setConditionErrors((current) => ({ ...current, [resort.slug]: message }));
         } finally {
             setLoadingDetailsSlug('');
         }
@@ -327,7 +339,16 @@ const ResortsPage = () => {
                             <article className="resort-row" key={resort.slug}>
                                 <div className="resort-index" aria-hidden="true">{String(resorts.indexOf(resort) + 1).padStart(2, '0')}</div>
                                 <div className="resort-details">
-                                    <h2>{resort.name}</h2>
+                                    <h2>
+                                        <button
+                                            className="resort-name-button"
+                                            type="button"
+                                            onClick={() => setExpandedSlug((current) => current === resort.slug ? '' : resort.slug)}
+                                            aria-expanded={expandedSlug === resort.slug}
+                                        >
+                                            {resort.name}
+                                        </button>
+                                    </h2>
                                     <p>{[resort.region, resort.country].filter(Boolean).join(' / ') || 'Location unavailable'}</p>
                                     {nearbyBySlug.has(resort.slug) && <p className="resort-distance">{nearbyBySlug.get(resort.slug).distance.text} · {nearbyBySlug.get(resort.slug).duration.text}</p>}
                                 </div>
@@ -338,7 +359,7 @@ const ResortsPage = () => {
                                         disabled={loadingDetailsSlug === resort.slug}
                                         aria-expanded={Boolean(detailsBySlug[resort.slug])}
                                     >
-                                        {loadingDetailsSlug === resort.slug ? 'Loading…' : detailsBySlug[resort.slug] ? 'Hide details' : 'Conditions'}
+                                        {loadingDetailsSlug === resort.slug ? 'Loading…' : detailsBySlug[resort.slug] ? 'Hide conditions' : 'Conditions'}
                                     </button>
                                     <button
                                         className={`resort-save ${saved ? 'is-saved' : ''}`}
@@ -349,9 +370,19 @@ const ResortsPage = () => {
                                         {savingSlug === resort.slug ? 'Saving…' : saved ? 'Saved' : token ? 'Save' : 'Log in to save'}
                                     </button>
                                 </div>
+                                {expandedSlug === resort.slug && (
+                                    <div className="resort-overview">
+                                        <div><dt>Location</dt><dd>{[resort.region, resort.country].filter(Boolean).join(', ') || 'Location unavailable'}</dd></div>
+                                        <div><dt>Coordinates</dt><dd>{resort.latitude !== null && resort.longitude !== null ? `${resort.latitude.toFixed(4)}, ${resort.longitude.toFixed(4)}` : 'Not available'}</dd></div>
+                                        {nearbyBySlug.has(resort.slug) && <div><dt>Drive from {nearbyOrigin}</dt><dd>{nearbyBySlug.get(resort.slug).distance.text} · {nearbyBySlug.get(resort.slug).duration.text}</dd></div>}
+                                        <p>Open Conditions for current snow, lift, trail, and weather details.</p>
+                                    </div>
+                                )}
                                 {detailsBySlug[resort.slug] && (
                                     <div className="resort-conditions">
-                                        {detailsBySlug[resort.slug].length ? (
+                                        {conditionErrors[resort.slug] ? (
+                                            <p role="status">{conditionErrors[resort.slug]}</p>
+                                        ) : detailsBySlug[resort.slug].length ? (
                                             <dl>
                                                 {detailsBySlug[resort.slug].map((fact) => (
                                                     <div key={fact.label}>

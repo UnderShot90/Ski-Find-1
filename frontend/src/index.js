@@ -6,7 +6,6 @@ import 'bootstrap/dist/css/bootstrap.min.css';
 import './site.css';
 
 import { BrowserRouter } from "react-router-dom";
-// Test Change
 
 ReactDOM.render(
     <BrowserRouter>
