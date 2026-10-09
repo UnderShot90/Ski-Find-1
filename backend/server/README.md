@@ -19,7 +19,7 @@ Set `RAPIDAPI_KEY` in `backend/server/.env` to your RapidAPI key. Do not commit 
 - `GET http://localhost:8081/ski/v1/resort`
 - `GET http://localhost:8081/ski/v1/resort/:slug` (for example, `whistler-blackcomb`)
 
-Nearby resort search uses HERE Geocoding and Matrix Routing. Create a HERE API key with access to Geocoding and Search and Matrix Routing, then set `HERE_API_KEY=<your-here-api-key>` in `backend/server/.env`. Keep the key server-side.
+Nearby resort search uses HERE Geocoding and Matrix Routing. The resorts page also uses HERE Raster Tile API for its interactive map. Create a HERE API key with access to Geocoding and Search, Matrix Routing, and Raster Tile API, then set `HERE_API_KEY=<your-here-api-key>` in `backend/server/.env`. Keep the key server-side.
 
 - `POST http://localhost:8081/ski/nearby` accepts an `origin` (`{ "address": "Denver, CO" }` or `{ "latitude": 39.7, "longitude": -105.0 }`) and a list of resorts with `slug`, `name`, `latitude`, and `longitude`.
 - The server compares the closest 25 resorts using driving distance. Resorts from the upstream feed without coordinates are not eligible for nearby results.

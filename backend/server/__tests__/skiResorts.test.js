@@ -1,10 +1,16 @@
 const express = require('express');
 const EventEmitter = require('events');
 const { PassThrough } = require('stream');
+const os = require('os');
+const path = require('path');
+
+// Keep the directory cache out of the real backend/server/cache folder.
+process.env.RESORT_DIRECTORY_CACHE_FILE = path.join(os.tmpdir(), `ski-find-test-${process.pid}.json`);
 
 jest.mock('https', () => ({ get: jest.fn(), request: jest.fn() }));
 
 const https = require('https');
+const fs = require('fs');
 const skiResortsRoute = require('../routes/skiResorts');
 
 const app = express();
@@ -72,6 +78,8 @@ describe('ski resort API proxy', () => {
         process.env.RAPIDAPI_KEY = 'test-api-key';
         https.get.mockReset();
         https.request.mockReset();
+        skiResortsRoute.clearCaches();
+        fs.rmSync(process.env.RESORT_DIRECTORY_CACHE_FILE, { force: true });
     });
 
     afterAll(() => {
@@ -119,6 +127,56 @@ describe('ski resort API proxy', () => {
 
         expect(response.status).toBe(429);
         expect(response.body).toEqual({ message: 'Rate limit exceeded' });
+    });
+
+    test('caches live conditions so repeat views do not spend API quota', async () => {
+        mockRapidApiResponse();
+
+        await require('supertest')(app).get('/ski/v1/resort/killington');
+        const response = await require('supertest')(app).get('/ski/v1/resort/killington');
+
+        expect(response.status).toBe(200);
+        expect(response.body).toEqual({ ok: true });
+        expect(https.get).toHaveBeenCalledTimes(1);
+    });
+
+    test('combines every directory page and caches the result', async () => {
+        const pages = [
+            { total_pages: 2, data: [{ slug: 'killington', name: 'Killington' }] },
+            { total_pages: 2, data: [{ slug: 'stowe', name: 'Stowe' }] }
+        ];
+        https.get.mockImplementation((url, options, callback) => {
+            const upstreamResponse = new PassThrough();
+            upstreamResponse.statusCode = 200;
+            upstreamResponse.headers = { 'content-type': 'application/json' };
+            const page = Number(new URL(url).searchParams.get('page'));
+            process.nextTick(() => {
+                callback(upstreamResponse);
+                upstreamResponse.end(JSON.stringify(pages[page - 1]));
+            });
+
+            const request = new EventEmitter();
+            request.setTimeout = jest.fn();
+            request.destroy = jest.fn();
+            return request;
+        });
+
+        const first = await require('supertest')(app).get('/ski/resorts');
+        const second = await require('supertest')(app).get('/ski/resorts');
+
+        expect(first.status).toBe(200);
+        expect(first.body.data.map((resort) => resort.slug)).toEqual(['killington', 'stowe']);
+        expect(second.body.data).toHaveLength(2);
+        expect(https.get).toHaveBeenCalledTimes(2);
+    });
+
+    test('reports the upstream error when no cached directory exists', async () => {
+        mockRapidApiResponse(429, '{"message":"You have exceeded the DAILY quota"}');
+
+        const response = await require('supertest')(app).get('/ski/resorts');
+
+        expect(response.status).toBe(429);
+        expect(response.body.error).toBe('You have exceeded the DAILY quota');
     });
 
     test('rejects malformed resort slugs', async () => {
@@ -173,6 +231,7 @@ describe('nearby resort distances', () => {
 
         expect(response.status).toBe(200);
         expect(response.body.origin).toBe('Denver, CO, United States');
+        expect(response.body.originPosition).toEqual({ latitude: 39.7, longitude: -105 });
         expect(response.body.resorts.map((resort) => resort.slug)).toEqual(['near', 'far']);
         expect(response.body.resorts[0].distance).toEqual({ text: '50.0 mi', value: 80467 });
         expect(response.body.resorts[0].duration).toEqual({ text: '1 hr', value: 3600 });
@@ -196,6 +255,39 @@ describe('nearby resort distances', () => {
         expect(response.status).toBe(503);
         expect(https.get).not.toHaveBeenCalled();
         expect(https.request).not.toHaveBeenCalled();
+    });
+
+    test('proxies HERE raster tiles with the server-side key', async () => {
+        https.get.mockImplementation((url, callback) => {
+            const response = new PassThrough();
+            response.statusCode = 200;
+            response.headers = { 'content-type': 'image/png' };
+            process.nextTick(() => {
+                callback(response);
+                response.end(Buffer.from('tile-image'));
+            });
+
+            const request = new EventEmitter();
+            request.setTimeout = jest.fn();
+            request.destroy = jest.fn();
+            return request;
+        });
+
+        const response = await require('supertest')(app).get('/ski/tiles/3/2/4.png');
+
+        expect(response.status).toBe(200);
+        expect(response.headers['content-type']).toContain('image/png');
+        expect(response.headers['cache-control']).toBe('public, max-age=86400');
+        expect(response.body.toString()).toBe('tile-image');
+        expect(String(https.get.mock.calls[0][0])).toContain('https://maps.hereapi.com/v3/base/mc/3/2/4/png');
+        expect(String(https.get.mock.calls[0][0])).toContain('apiKey=test-here-key');
+    });
+
+    test('rejects invalid HERE tile coordinates without an upstream request', async () => {
+        const response = await require('supertest')(app).get('/ski/tiles/3/8/4.png');
+
+        expect(response.status).toBe(400);
+        expect(https.get).not.toHaveBeenCalled();
     });
 
     test('returns a clear error when HERE cannot geocode the location', async () => {
