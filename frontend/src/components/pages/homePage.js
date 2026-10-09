@@ -83,7 +83,7 @@ const HomePage = () => {
                     ) : savedResorts.length ? (
                         <div className="dashboard-saved-list">
                             {savedResorts.slice(0, 5).map((resort) => (
-                                <Link className="dashboard-saved-row" to="/resorts" key={resort.slug}>
+                                <Link className="dashboard-saved-row" to={`/resorts/${resort.slug}`} key={resort.slug}>
                                     <span className="saved-resort-mark" aria-hidden="true">S</span>
                                     <span className="saved-resort-info">
                                         <strong>{resort.name}</strong>

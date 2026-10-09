@@ -10,6 +10,7 @@ import Login from "./components/pages/loginPage";
 import Signup from "./components/pages/registerPage";
 import PrivateUserProfile from "./components/pages/privateUserProfilePage";
 import ResortsPage from "./components/pages/resortsPage";
+import ResortDetailPage from "./components/pages/resortDetailPage";
 import getUserInfo from "./utilities/decodeJwt";
 
 export const UserContext = createContext();
@@ -28,6 +29,8 @@ const App = () => {
           <Route path="/" element={<LandingPage />} />
           <Route path="/home" element={<HomePage />} />
           <Route path="/resorts" element={<ResortsPage />} />
+          {/* One dynamic route serves a page for every resort in the catalog */}
+          <Route path="/resorts/:slug" element={<ResortDetailPage />} />
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
           <Route path="/privateUserProfile" element={<PrivateUserProfile />} />
