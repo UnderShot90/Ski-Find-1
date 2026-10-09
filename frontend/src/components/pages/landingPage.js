@@ -7,7 +7,7 @@ const LandingPage = () => (
             <div className="landing-hero-content">
                 <p className="landing-kicker"><span className="status-dot" /> Your next day on the mountain starts here</p>
                 <h1>Find your<br /><em>mountain.</em></h1>
-                <p className="landing-summary">Compare ski resorts, check current conditions, and keep the places you love within reach.</p>
+                <p className="landing-summary">Compare East Coast ski resorts from Maine to North Carolina, check live lift conditions, and keep the places you love within reach.</p>
                 <div className="landing-actions">
                     <Link to="/resorts" className="button-primary">Explore resorts <span aria-hidden="true">↗</span></Link>
                     <Link to="/signup" className="button-quiet">Create an account</Link>
@@ -25,12 +25,12 @@ const LandingPage = () => (
             <div className="feature-list">
                 <article className="feature-item">
                     <span className="feature-number">01</span>
-                    <div><h3>Find your mountain</h3><p>Browse a worldwide resort directory or find destinations by distance from a city or ZIP code.</p></div>
+                    <div><h3>Find your mountain</h3><p>Browse East Coast mountains by state, or find the closest ones by driving distance from a city or ZIP code.</p></div>
                     <span className="feature-arrow" aria-hidden="true">↗</span>
                 </article>
                 <article className="feature-item">
                     <span className="feature-number">02</span>
-                    <div><h3>Know before you go</h3><p>Open resort conditions for the latest snow, lift, trail, and weather details.</p></div>
+                    <div><h3>Know before you go</h3><p>Every resort has its own page with mountain stats, live lift status, and a link to its official site.</p></div>
                     <span className="feature-arrow" aria-hidden="true">↗</span>
                 </article>
                 <article className="feature-item">
