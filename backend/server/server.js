@@ -15,8 +15,8 @@ const resortTerrainRoute = require('./routes/resortTerrain')
 const adminReportsRoute = require('./routes/adminReports')
 const resortConditionsRoute = require('./routes/resortConditions')
 
-require('dotenv').config();
-const SERVER_PORT = 8081
+const SERVER_PORT = process.env.PORT || 8081
+
 
 dbConnection()
 app.use(cors({origin: '*'}))
