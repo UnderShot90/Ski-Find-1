@@ -78,7 +78,7 @@ const Login = () => {
 
         <p className="text-center text-sm text-spotify-muted mt-6">
           Don't have an account?{" "}
-          <Link to="/signup" className="font-semibold text-white hover:text-spotify-green transition-colors">Sign up</Link>
+          <Link to="/signup" className="auth-inline-action">Create an account</Link>
         </p>
       </div>
     </main>

@@ -1,19 +1,27 @@
-import React, { useCallback, useEffect, useState } from 'react';
-import axios from 'axios';
+import React, { useCallback, useEffect, useRef } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import ResortMap from '../ResortMap';
 import ResortComments from '../ResortComments';
-import { API_URL, useResortDirectory, useSavedResorts } from '../../utilities/resortHooks';
-import { formatLocation, hasCoordinates, milesBetween, parseConditions } from '../../utilities/resorts';
+import { useConditions, useResortDirectory, useSavedResorts, useSkillLevel, useTerrain } from '../../utilities/resortHooks';
+import { SKILL_LEVELS, formatConditions, formatLocation, getDifficulty, getSkillLevel, hasCoordinates, hasTerrain, milesBetween, recommendForSkill, skillFit, timeAgo, withTerrain } from '../../utilities/resorts';
 import '../../css/resorts.css';
 
 // ---------------------------------------------------------------------------
 // One page per mountain, served by the single route /resorts/:slug.
 // Everything shown here comes from the resort's catalog entry
-// (src/data/resortCatalog.js) and, when available, the live ski API, so a new
-// mountain only needs a new catalog entry.
+// (src/data/resortCatalog.js), the live resort directory, and current
+// conditions researched by Claude, so a new mountain only needs a new
+// catalog entry.
 // ---------------------------------------------------------------------------
 const NEARBY_COUNT = 6;
+const SKILL_MATCH_COUNT = 6;
+
+// What to tell a skier about this resort compared with their level.
+const FIT_MESSAGES = {
+    match: 'A good match for your level.',
+    easier: 'Should feel comfortable. You may find fewer challenging runs.',
+    harder: 'May be challenging at your level. Stick to marked easier trails.'
+};
 
 // The stat tiles shown under the hero. Missing values are skipped.
 const STAT_FIELDS = [
@@ -23,54 +31,41 @@ const STAT_FIELDS = [
     { key: 'lifts', label: 'Lifts', format: String }
 ];
 
-// Fetches live lift conditions for one resort. `liveSlug` is null when the
-// resort is known not to be in the ski API, in which case nothing is requested.
-function useLiveConditions(liveSlug) {
-    const [state, setState] = useState({ loading: false, error: '', conditions: null });
-    const [attempt, setAttempt] = useState(0);
-
-    useEffect(() => {
-        if (!liveSlug) {
-            setState({ loading: false, error: '', conditions: null });
-            return undefined;
-        }
-
-        const controller = new AbortController();
-        setState({ loading: true, error: '', conditions: null });
-        axios.get(`${API_URL}/ski/v1/resort/${encodeURIComponent(liveSlug)}`, { signal: controller.signal })
-            .then((response) => setState({ loading: false, error: '', conditions: parseConditions(response.data) }))
-            .catch((requestError) => {
-                if (requestError.code === 'ERR_CANCELED') return;
-                const status = requestError.response?.status;
-                const error = status === 429
-                    ? 'The live conditions service has hit its daily limit. Try again later.'
-                    : status === 404
-                        ? 'Live conditions are not available for this resort yet.'
-                        : requestError.response?.data?.error || 'Could not load live conditions. Make sure the backend server is running.';
-                setState({ loading: false, error, conditions: null });
-            });
-
-        return () => controller.abort();
-    }, [liveSlug, attempt]);
-
-    const retry = useCallback(() => setAttempt((count) => count + 1), []);
-    return { ...state, retry };
-}
-
 const ResortDetailPage = () => {
     const { slug } = useParams();
     const navigate = useNavigate();
-    const { resorts, loading } = useResortDirectory();
+    const { resorts: directory, loading } = useResortDirectory();
     const { token, savedSlugs, savingSlug, savedError, toggleSaved } = useSavedResorts();
+    const [skillLevel, setSkillLevel] = useSkillLevel();
+    const terrain = useTerrain();
+    // Trail mixes looked up by Claude feed into every resort's suggested level.
+    const resorts = withTerrain(directory, terrain.terrainBySlug);
 
     // Match on either our slug or the API slug so old links keep working.
     const resort = resorts.find((item) => item.slug === slug || item.liveSlug === slug);
-    const live = useLiveConditions(resort?.liveSlug);
 
+    // Current conditions researched by Claude. For signed-in visitors, a
+    // missing or old report is refreshed automatically, once per resort.
+    const conditions = useConditions();
+    const { refresh: refreshConditions } = conditions;
+    const report = resort ? conditions.conditionsBySlug[resort.slug] : undefined;
+    const needsRefresh = Boolean(resort) && conditions.loaded && (!report || report.stale);
+    const resortRef = useRef(resort);
+    resortRef.current = resort;
+    const autoRefreshed = useRef(new Set());
+    const resortSlug = resort?.slug;
     useEffect(() => {
-        document.title = resort ? `${resort.name} | Ski Find` : 'Ski Find';
+        if (!needsRefresh || !token || autoRefreshed.current.has(resortSlug)) return;
+        autoRefreshed.current.add(resortSlug);
+        refreshConditions(resortRef.current);
+    }, [needsRefresh, token, resortSlug, refreshConditions]);
+
+    // Keyed on the name, since `resort` is a new object on every render.
+    const resortName = resort?.name;
+    useEffect(() => {
+        document.title = resortName ? `${resortName} | Ski Find` : 'Ski Find';
         return () => { document.title = 'Ski Find'; };
-    }, [resort]);
+    }, [resortName]);
 
     // Closest other resorts by straight-line distance, for the map and the list.
     const nearby = resort && hasCoordinates(resort)
@@ -103,9 +98,22 @@ const ResortDetailPage = () => {
 
     const saved = savedSlugs.has(resort.slug);
     const stats = STAT_FIELDS.filter((field) => Number.isFinite(resort[field.key]));
+    const difficulty = getDifficulty(resort);
+    const fit = skillFit(difficulty, skillLevel);
+    const skillMatches = recommendForSkill(resorts, skillLevel, resort, SKILL_MATCH_COUNT);
     const directionsUrl = hasCoordinates(resort)
         ? `https://www.google.com/maps/dir/?api=1&destination=${resort.latitude},${resort.longitude}`
         : '';
+
+    async function handleTerrainLookup() {
+        const signedIn = await terrain.lookUp(resort);
+        if (!signedIn) navigate('/login');
+    }
+
+    async function handleConditionsRefresh() {
+        const signedIn = await refreshConditions(resort);
+        if (!signedIn) navigate('/login');
+    }
 
     async function handleSave() {
         const signedIn = await toggleSaved(resort);
@@ -162,23 +170,29 @@ const ResortDetailPage = () => {
                                 <dd>{field.format(resort[field.key])}</dd>
                             </div>
                         ))}
+                        {difficulty && (
+                            <div>
+                                <dt>Suggested level</dt>
+                                <dd><span className={`difficulty-badge is-${difficulty.id}`}>{difficulty.label}</span></dd>
+                            </div>
+                        )}
                         <p>Approximate figures. Check the official site for this season's numbers.</p>
                     </section>
                 )}
 
                 <div className="resort-layout">
-                    {/* Live conditions from the ski API */}
+                    {/* Current conditions researched by Claude */}
                     <section className="resort-panel" aria-labelledby="conditions-title">
                         <p className="resorts-eyebrow">Know before you go</p>
                         <h2 id="conditions-title">Live conditions</h2>
-                        {!resort.liveSlug && <p className="resort-panel-note">Live conditions are not available for this resort yet. Check the official website for today's report.</p>}
-                        {live.loading && <p className="resort-panel-note" role="status">Loading live conditions…</p>}
-                        {live.error && (
-                            <p className="resort-panel-note" role="alert">
-                                {live.error} <button type="button" className="resort-clear" onClick={live.retry}>Retry</button>
-                            </p>
-                        )}
-                        {live.conditions && <ConditionsReport conditions={live.conditions} />}
+                        <ConditionsReport
+                            report={report}
+                            loaded={conditions.loaded}
+                            refreshing={conditions.refreshing === resort.slug}
+                            error={conditions.refreshError}
+                            signedIn={Boolean(token)}
+                            onRefresh={handleConditionsRefresh}
+                        />
                     </section>
 
                     {/* Nearby mountains by straight-line distance */}
@@ -199,6 +213,68 @@ const ResortDetailPage = () => {
                     </section>
                 </div>
 
+                {/* Suggested difficulty and mountains matched to the skier's level */}
+                <section className="resort-panel resort-skill" aria-labelledby="skill-title">
+                    <p className="resorts-eyebrow">Find your level</p>
+                    <h2 id="skill-title">Matched to your skill level</h2>
+                    {difficulty ? (
+                        <p className="resort-panel-note">
+                            {resort.name} is rated <span className={`difficulty-badge is-${difficulty.id}`}>{difficulty.label}</span>. {difficulty.summary} {difficulty.reason}
+                        </p>
+                    ) : (
+                        <p className="resort-panel-note">There is not enough data to suggest a level for {resort.name} yet.</p>
+                    )}
+
+                    {hasTerrain(resort) ? (
+                        <TrailMix terrain={resort.terrain} />
+                    ) : terrain.notFound.has(resort.slug) ? (
+                        <p className="resort-panel-note">No published trail breakdown could be found for {resort.name}.</p>
+                    ) : (
+                        <div className="trail-lookup">
+                            <button type="button" className="resort-hero-secondary" onClick={handleTerrainLookup} disabled={terrain.lookingUp === resort.slug}>
+                                {terrain.lookingUp === resort.slug
+                                    ? 'Researching trails… (up to a minute)'
+                                    : token ? 'Look up trail breakdown with AI' : 'Log in to look up trail breakdown'}
+                            </button>
+                            <small>Claude searches the web for {resort.name}'s green, blue, and black trail mix to sharpen this rating.</small>
+                        </div>
+                    )}
+                    {terrain.lookupError && <p className="resorts-message" role="alert">{terrain.lookupError}</p>}
+
+                    <div className="skill-picker" role="group" aria-label="Your skill level">
+                        <span>I ski at</span>
+                        {SKILL_LEVELS.map((level) => (
+                            <button
+                                key={level.id}
+                                type="button"
+                                className={skillLevel === level.id ? 'is-active' : ''}
+                                aria-pressed={skillLevel === level.id}
+                                onClick={() => setSkillLevel(skillLevel === level.id ? '' : level.id)}
+                            >
+                                {level.label}
+                            </button>
+                        ))}
+                    </div>
+
+                    {!skillLevel && <p className="resort-panel-note">Pick your level to see mountains that suit you.</p>}
+                    {fit && <p className={`skill-fit is-${fit}`}>{FIT_MESSAGES[fit]}</p>}
+                    {skillLevel && (skillMatches.length ? (
+                        <ul className="resort-nearby-list">
+                            {skillMatches.map((item) => (
+                                <li key={item.slug}>
+                                    <Link to={`/resorts/${item.slug}`}>
+                                        <strong>{item.name}</strong>
+                                        <small>{formatLocation(item)}</small>
+                                    </Link>
+                                    {item.miles !== null && <span>{Math.round(item.miles)} mi</span>}
+                                </li>
+                            ))}
+                        </ul>
+                    ) : (
+                        <p className="resort-panel-note">No other {getSkillLevel(skillLevel).label.toLowerCase()} mountains found.</p>
+                    ))}
+                </section>
+
                 <section className="resorts-map-section" aria-labelledby="resort-map-title">
                     <div className="resorts-map-heading">
                         <div>
@@ -217,50 +293,121 @@ const ResortDetailPage = () => {
     );
 };
 
-// Renders the parsed live conditions: lift counts, individual lifts, and any
-// other fields the API returned.
-const ConditionsReport = ({ conditions }) => {
-    const { liftStats, lifts, facts, reportUrl } = conditions;
-    const hasLiftCounts = liftStats && Object.values(liftStats).some((count) => count > 0);
+// Green / blue / black split as a bar with a legend. Catalog figures have no
+// `sources`; ones researched by Claude list where the numbers came from.
+const TRAIL_RATINGS = [
+    { key: 'beginnerPct', label: 'Green', className: 'is-beginner' },
+    { key: 'intermediatePct', label: 'Blue', className: 'is-intermediate' },
+    { key: 'advancedPct', label: 'Black', className: 'is-advanced' }
+];
+
+const TrailMix = ({ terrain }) => (
+    <div className="trail-mix">
+        <div className="trail-mix-bar" role="img" aria-label={TRAIL_RATINGS.map((rating) => `${terrain[rating.key]}% ${rating.label.toLowerCase()}`).join(', ')}>
+            {TRAIL_RATINGS.map((rating) => terrain[rating.key] > 0 && (
+                <span key={rating.key} className={rating.className} style={{ width: `${terrain[rating.key]}%` }} />
+            ))}
+        </div>
+        <ul className="trail-mix-legend">
+            {TRAIL_RATINGS.map((rating) => (
+                <li key={rating.key}><span className={`trail-mix-swatch ${rating.className}`} aria-hidden="true" />{rating.label} {terrain[rating.key]}%</li>
+            ))}
+        </ul>
+        {terrain.summary && <p className="resort-panel-note">{terrain.summary}</p>}
+        {terrain.sources && (
+            <p className="trail-mix-source">
+                Researched by Claude (AI) from the web. Check the resort's trail map to confirm.
+                {terrain.sources.map((url, index) => (
+                    <a key={url} href={url} target="_blank" rel="noopener noreferrer"> Source {index + 1}</a>
+                ))}
+            </p>
+        )}
+    </div>
+);
+
+// The stat tiles in the conditions report, read from formatConditions().
+const CONDITION_TILES = [
+    { key: 'temp', label: 'Temperature' },
+    { key: 'newSnow', label: 'New snow (24h)' },
+    { key: 'baseDepth', label: 'Base depth' },
+    { key: 'lifts', label: 'Lifts open' },
+    { key: 'trails', label: 'Trails open' },
+    { key: 'ticket', label: 'Adult day ticket' }
+];
+
+const STATUS_LABELS = { open: 'Open today', closed: 'Closed', unknown: 'Status unknown' };
+
+// Report dates are calendar days (YYYY-MM-DD); noon keeps them on the same day in every time zone.
+function formatReportDate(day) {
+    return new Date(`${day}T12:00:00`).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+}
+
+// Current conditions researched by Claude: open status, weather, snow, lifts,
+// trails, ticket price, and webcam links, plus where they came from.
+const ConditionsReport = ({ report, loaded, refreshing, error, signedIn, onRefresh }) => {
+    if (!loaded) return <p className="resort-panel-note" role="status">Loading conditions…</p>;
+
+    const values = report?.found ? formatConditions(report) : null;
+    const canRefresh = !refreshing && (!report || report.stale);
 
     return (
         <div className="resort-conditions-report">
-            {hasLiftCounts ? (
-                <dl className="resort-lift-stats">
-                    {Object.entries(liftStats).map(([status, count]) => (
-                        <div key={status} className={`is-${status}`}>
-                            <dt>{status}</dt>
-                            <dd>{count}</dd>
+            {refreshing && <p className="resort-panel-note" role="status">Checking today's conditions with AI. This can take up to a minute…</p>}
+            {!report && !refreshing && !signedIn && (
+                <p className="resort-panel-note"><Link to="/login">Sign in</Link> to load today's conditions for this resort.</p>
+            )}
+            {report && !report.found && (
+                <p className="resort-panel-note">No current conditions could be found for this resort. Check the official website for today's report.</p>
+            )}
+
+            {values && (
+                <>
+                    <div className="conditions-status">
+                        <span className={`conditions-status-pill is-${report.operatingStatus}`}>{STATUS_LABELS[report.operatingStatus] || STATUS_LABELS.unknown}</span>
+                        {report.reportDate && <span>Report from {formatReportDate(report.reportDate)}</span>}
+                    </div>
+
+                    <dl className="conditions-grid">
+                        {CONDITION_TILES.map((tile) => (
+                            <div key={tile.key} className={values[tile.key] ? '' : 'is-missing'}>
+                                <dt>{tile.label}</dt>
+                                <dd>{values[tile.key] || 'Not reported'}</dd>
+                            </div>
+                        ))}
+                    </dl>
+
+                    {report.weatherSummary && <p className="resort-panel-note"><strong>Weather:</strong> {report.weatherSummary}</p>}
+                    {report.forecast && <p className="resort-panel-note"><strong>Forecast:</strong> {report.forecast}</p>}
+                    {report.ticketNote && values.ticket && <p className="resort-panel-note"><strong>Ticket:</strong> {report.ticketNote}</p>}
+                    {report.summary && <p className="resort-panel-note">{report.summary}</p>}
+
+                    {report.webcams?.length > 0 && (
+                        <div className="conditions-webcams">
+                            <h3>Webcams</h3>
+                            <ul>
+                                {report.webcams.map((camera) => (
+                                    <li key={camera.url}>
+                                        <a href={camera.url} target="_blank" rel="noopener noreferrer">{camera.label} <span aria-hidden="true">↗</span></a>
+                                    </li>
+                                ))}
+                            </ul>
                         </div>
-                    ))}
-                </dl>
-            ) : (
-                <p className="resort-panel-note">No lifts are reporting right now. The resort may be closed for the season.</p>
+                    )}
+
+                    <p className="trail-mix-source">
+                        Researched by Claude (AI) from the web {timeAgo(report.updatedAt)}. Conditions change quickly, so check the resort before you go.
+                        {report.sources?.map((url, index) => (
+                            <a key={url} href={url} target="_blank" rel="noopener noreferrer"> Source {index + 1}</a>
+                        ))}
+                    </p>
+                </>
             )}
 
-            {lifts.length > 0 && (
-                <ul className="resort-lift-list">
-                    {lifts.map((lift) => (
-                        <li key={lift.name}><span>{lift.name}</span><span className={`lift-status is-${lift.status.toLowerCase()}`}>{lift.status}</span></li>
-                    ))}
-                </ul>
-            )}
-
-            {facts.length > 0 && (
-                <dl className="resort-facts">
-                    {facts.map((fact) => (
-                        <div key={fact.label}>
-                            <dt>{fact.label.replace(/[_-]/g, ' ')}</dt>
-                            <dd>{fact.value}</dd>
-                        </div>
-                    ))}
-                </dl>
-            )}
-
-            {reportUrl && (
-                <a className="resort-report-link" href={reportUrl} target="_blank" rel="noopener noreferrer">
-                    Full lift and trail report <span aria-hidden="true">↗</span>
-                </a>
+            {error && <p className="resort-panel-note resort-comment-error" role="alert">{error}</p>}
+            {canRefresh && (signedIn || report) && (
+                <button type="button" className="resort-hero-secondary conditions-refresh" onClick={onRefresh}>
+                    {signedIn ? (report ? 'Refresh conditions' : "Load today's conditions") : 'Sign in to refresh'}
+                </button>
             )}
         </div>
     );

@@ -793,6 +793,286 @@ a.resort-save {
     white-space: nowrap;
 }
 
+/* Suggested difficulty and skill-level recommendations */
+.resort-skill {
+    margin-top: 18px;
+}
+
+.resort-skill .resort-panel-note {
+    margin-bottom: 12px;
+}
+
+/* Colors follow North American trail signs */
+.difficulty-badge {
+    display: inline-block;
+    border-radius: 3px;
+    color: #fff;
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.4px;
+    padding: 3px 8px;
+    text-transform: uppercase;
+    vertical-align: middle;
+}
+
+.resort-stats .difficulty-badge {
+    font-size: 15px;
+    padding: 5px 10px;
+}
+
+.difficulty-badge.is-beginner { background: #3f7d32; }
+.difficulty-badge.is-intermediate { background: #2f5f9e; }
+.difficulty-badge.is-advanced { background: #1d1f1e; }
+.difficulty-badge.is-expert { background: #1d1f1e; box-shadow: inset 0 0 0 2px #c66b45; }
+
+.trail-mix {
+    margin-bottom: 16px;
+}
+
+.trail-mix-bar {
+    display: flex;
+    height: 14px;
+    overflow: hidden;
+    border-radius: 3px;
+    background: var(--resort-line);
+}
+
+.trail-mix-bar .is-beginner,
+.trail-mix-swatch.is-beginner { background: #3f7d32; }
+.trail-mix-bar .is-intermediate,
+.trail-mix-swatch.is-intermediate { background: #2f5f9e; }
+.trail-mix-bar .is-advanced,
+.trail-mix-swatch.is-advanced { background: #1d1f1e; }
+
+.trail-mix-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 16px;
+    margin: 8px 0 10px;
+    padding: 0;
+    list-style: none;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.trail-mix-swatch {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    margin-right: 6px;
+    border-radius: 2px;
+}
+
+.trail-mix-source {
+    margin: 8px 0 0;
+    color: var(--resort-muted);
+    font-size: 12px;
+}
+
+.trail-mix-source a {
+    color: #34543c;
+    font-weight: 700;
+}
+
+.trail-lookup {
+    display: grid;
+    justify-items: start;
+    gap: 6px;
+    margin-bottom: 16px;
+}
+
+.trail-lookup small {
+    color: var(--resort-muted);
+    font-size: 12px;
+}
+
+.skill-picker {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.skill-picker span {
+    color: var(--resort-muted);
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.skill-picker button {
+    min-height: 40px;
+    border: 1px solid var(--resort-line);
+    background: #f6f7f2;
+    color: var(--resort-ink);
+    cursor: pointer;
+    font: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    padding: 8px 14px;
+}
+
+.skill-picker button:hover {
+    border-color: var(--resort-ink);
+}
+
+.skill-picker button.is-active {
+    border-color: var(--resort-ink);
+    background: var(--resort-ink);
+    color: var(--resort-green);
+}
+
+.skill-fit {
+    margin: 0 0 8px;
+    border-left: 3px solid var(--resort-line);
+    background: #f8f9f5;
+    font-size: 14px;
+    padding: 9px 12px;
+}
+
+.skill-fit.is-match { border-left-color: #6f9a3e; }
+.skill-fit.is-easier { border-left-color: #5f84a8; }
+.skill-fit.is-harder { border-left-color: #b45d3c; }
+
+/* Current conditions researched by Claude */
+.conditions-status {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 12px;
+    margin-bottom: 12px;
+    color: var(--resort-muted);
+    font-size: 12px;
+}
+
+.conditions-status-pill {
+    border-radius: 999px;
+    background: #eef0ea;
+    color: #4f6156;
+    font-size: 12px;
+    font-weight: 700;
+    padding: 3px 10px;
+}
+
+.conditions-status-pill.is-open {
+    background: #edf2df;
+    color: #334936;
+}
+
+.conditions-status-pill.is-closed {
+    background: #f6e3da;
+    color: #8a3d22;
+}
+
+.conditions-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+    margin: 0 0 14px;
+}
+
+.conditions-grid > div {
+    border-top: 3px solid #6f9a3e;
+    background: #f6f7f2;
+    padding: 10px 12px;
+}
+
+.conditions-grid > div.is-missing {
+    border-top-color: var(--resort-line);
+}
+
+.conditions-grid dt {
+    color: var(--resort-muted);
+    font-size: 11px;
+}
+
+.conditions-grid dd {
+    margin: 2px 0 0;
+    font-size: 22px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+
+.conditions-grid .is-missing dd {
+    color: var(--resort-muted);
+    font-size: 13px;
+    font-weight: 600;
+    padding-top: 6px;
+}
+
+.resort-conditions-report > .resort-panel-note + .resort-panel-note {
+    margin-top: 6px;
+}
+
+.conditions-webcams {
+    margin-top: 14px;
+}
+
+.conditions-webcams h3 {
+    margin: 0 0 6px;
+    color: var(--resort-ink);
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.conditions-webcams ul {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.conditions-webcams a {
+    display: inline-block;
+    border: 1px solid var(--resort-line);
+    border-radius: 3px;
+    color: #34543c;
+    font-size: 13px;
+    font-weight: 700;
+    padding: 5px 10px;
+    text-decoration: none;
+}
+
+.conditions-webcams a:hover {
+    border-color: #48674e;
+    background: #f1f5e9;
+}
+
+.resort-conditions-report .conditions-refresh {
+    margin-top: 12px;
+    min-height: 38px;
+    border-color: var(--resort-ink);
+    background: var(--resort-ink);
+    color: #fff;
+    font-size: 13px;
+}
+
+.resort-conditions-report .conditions-refresh:hover {
+    background: #2b3f34;
+}
+
+.resort-live-stats {
+    color: #334936;
+    font-weight: 600;
+}
+
+.resort-live-stats .is-closed {
+    color: #8a3d22;
+}
+
+.admin-conditions {
+    margin-top: 18px;
+}
+
+@media (max-width: 700px) {
+    .conditions-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
 /* Comment thread on the resort page */
 .resort-comments {
     margin-top: 18px;
@@ -922,6 +1202,212 @@ a.resort-save {
     line-height: 1.55;
     white-space: pre-wrap;
     overflow-wrap: anywhere;
+}
+
+/* Reporting a comment */
+.resort-comment-list .resort-report-note {
+    color: var(--resort-muted);
+    font-size: 12px;
+    font-style: italic;
+}
+
+.resort-report-form {
+    margin: 10px 0 0 36px;
+    border-left: 3px solid var(--resort-line);
+    background: #f8f9f5;
+    padding: 12px 14px;
+}
+
+.resort-report-form fieldset {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 16px;
+    margin: 0 0 10px;
+    border: 0;
+    padding: 0;
+}
+
+.resort-report-form legend {
+    width: 100%;
+    margin-bottom: 6px;
+    color: #1e3027;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.resort-report-form fieldset label {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    cursor: pointer;
+}
+
+.resort-report-form textarea {
+    width: 100%;
+    border: 1px solid #c8d1c8;
+    border-radius: 3px;
+    background: #fff;
+    font: inherit;
+    font-size: 13px;
+    padding: 8px 10px;
+    resize: vertical;
+}
+
+.resort-report-form .resort-comment-form-footer {
+    justify-content: flex-end;
+}
+
+.resort-report-form .resort-save:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+
+.resort-report-form .resort-comment-error {
+    margin: 8px 0 0;
+}
+
+/* Admin review queue for reported comments */
+.admin-reports-heading {
+    min-height: 200px;
+}
+
+.admin-reports-heading .resort-save {
+    flex-shrink: 0;
+}
+
+.admin-report-list {
+    display: grid;
+    gap: 14px;
+    margin: 18px 0 0;
+    padding: 0;
+    list-style: none;
+}
+
+.admin-report-top {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 14px;
+    margin-bottom: 14px;
+    font-size: 13px;
+}
+
+.admin-report-top a {
+    color: #34543c;
+    font-weight: 700;
+}
+
+.admin-report-top time {
+    margin-left: auto;
+    color: var(--resort-muted);
+    font-size: 12px;
+}
+
+.admin-report-count {
+    border-radius: 999px;
+    background: #f6e3da;
+    color: #8a3d22;
+    font-size: 12px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    padding: 3px 10px;
+}
+
+.admin-report-hidden {
+    border: 1px solid #c9a08e;
+    border-radius: 999px;
+    color: #8a3d22;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 2px 10px;
+}
+
+.admin-report-body {
+    margin: 8px 0 0 36px;
+    border-left: 3px solid var(--resort-line);
+    color: #2b3d33;
+    font-size: 14px;
+    line-height: 1.55;
+    padding: 2px 0 2px 12px;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+.admin-report-reasons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin: 14px 0 0;
+    padding: 0;
+    list-style: none;
+}
+
+.admin-report-reasons li {
+    border: 1px solid var(--resort-line);
+    border-radius: 3px;
+    background: #f8f9f5;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 3px 8px;
+}
+
+.admin-report-details {
+    margin-top: 10px;
+    font-size: 13px;
+}
+
+.admin-report-details summary {
+    color: #34543c;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.admin-report-details ul {
+    margin: 8px 0 0;
+    padding-left: 18px;
+    color: #2b3d33;
+}
+
+.admin-report-details li {
+    overflow-wrap: anywhere;
+}
+
+.admin-report-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 16px;
+}
+
+.admin-report-actions .resort-save:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+
+.resort-save.admin-report-remove {
+    border-color: #a14d2f;
+    background: #a14d2f;
+    color: #fff;
+}
+
+.resort-save.admin-report-remove:hover:not(:disabled) {
+    border-color: #853c23;
+    background: #853c23;
+    color: #fff;
+}
+
+@media (max-width: 700px) {
+    .admin-report-top time {
+        width: 100%;
+        margin-left: 0;
+    }
+
+    .resort-report-form,
+    .admin-report-body {
+        margin-left: 0;
+    }
 }
 
 @media (max-width: 860px) {

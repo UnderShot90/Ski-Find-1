@@ -6,6 +6,10 @@ jest.mock('../models/resortCommentModel', () => ({
     create: jest.fn(),
     findOneAndDelete: jest.fn()
 }));
+jest.mock('../models/commentReportModel', () => ({
+    REPORT_REASONS: [],
+    deleteMany: jest.fn()
+}));
 
 const ResortComment = require('../models/resortCommentModel');
 const resortCommentsRoute = require('../routes/resortComments');
@@ -45,7 +49,7 @@ describe('resort comment routes', () => {
 
         expect(response.status).toBe(200);
         expect(response.body).toEqual(comments);
-        expect(ResortComment.find).toHaveBeenCalledWith({ resortSlug: 'killington' });
+        expect(ResortComment.find).toHaveBeenCalledWith({ resortSlug: 'killington', hiddenForReview: { $ne: true } });
         expect(sort).toHaveBeenCalledWith({ createdAt: -1 });
     });
 

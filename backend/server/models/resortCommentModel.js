@@ -25,6 +25,12 @@ const resortCommentSchema = new mongoose.Schema({
         required: true,
         trim: true,
         maxlength: 1000
+    },
+    // Set once a comment collects enough open reports; hidden comments are
+    // left out of public listings until an admin keeps or removes them.
+    hiddenForReview: {
+        type: Boolean,
+        default: false
     }
 }, { timestamps: true });
 

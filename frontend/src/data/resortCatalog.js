@@ -12,6 +12,13 @@
 //               Approximate published figures; resorts change these yearly,
 //               so leave a value null rather than guessing.
 //   description One or two sentences shown on the resort page.
+//   terrain     Optional { beginnerPct, intermediatePct, advancedPct }: percent
+//               of green, blue, and black (incl. double black) trails from the
+//               resort's trail map. Without it, signed-in users can have
+//               Claude look it up from the resort page (needs ANTHROPIC_API_KEY
+//               on the backend).
+//   difficulty  Optional 'beginner' | 'intermediate' | 'advanced' | 'expert'
+//               to override the suggested level entirely.
 //
 // Resorts in the live API that are not listed here still show up under
 // "All regions", just without the extra details.

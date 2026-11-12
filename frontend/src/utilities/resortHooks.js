@@ -4,6 +4,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import axios from 'axios';
 import { extractResorts, mergeResorts, normalizeResort } from './resorts';
+import getUserInfo from './decodeJwt';
 
 export const API_URL = process.env.REACT_APP_BACKEND_SERVER_URI || 'http://localhost:8081';
 const LIVE_CACHE_KEY = 'skiFindResortDirectory';
@@ -119,4 +120,167 @@ export function useSavedResorts() {
     }, [token, savedSlugs]);
 
     return { token, savedSlugs, savingSlug, savedError, toggleSaved };
+}
+
+// Trail mixes stored by the backend, loaded once per browser session.
+let terrainRequest = null;
+
+function loadStoredTerrain() {
+    if (!terrainRequest) {
+        terrainRequest = axios.get(`${API_URL}/terrain`)
+            .then((response) => Object.fromEntries(response.data.map((terrain) => [terrain.resortSlug, terrain])))
+            .catch(() => {
+                terrainRequest = null;
+                return {};
+            });
+    }
+    return terrainRequest;
+}
+
+// Trail difficulty breakdowns ({ [slug]: terrain }) plus `lookUp(resort)`,
+// which asks the backend to research one with Claude. `notFound` holds slugs
+// where Claude could not find a published breakdown.
+export function useTerrain() {
+    const [terrainBySlug, setTerrainBySlug] = useState({});
+    const [notFound, setNotFound] = useState(() => new Set());
+    const [lookingUp, setLookingUp] = useState('');
+    const [lookupError, setLookupError] = useState('');
+
+    useEffect(() => {
+        let active = true;
+        loadStoredTerrain().then((stored) => {
+            if (active) setTerrainBySlug((current) => ({ ...stored, ...current }));
+        });
+        return () => { active = false; };
+    }, []);
+
+    // Resolves false when the user must log in first.
+    const lookUp = useCallback(async (resort) => {
+        // getUserInfo clears an expired token, so this catches stale logins too.
+        const token = getUserInfo() && localStorage.getItem('accessToken');
+        if (!token) return false;
+
+        setLookingUp(resort.slug);
+        setLookupError('');
+        try {
+            const { slug, name, region, website } = resort;
+            const response = await axios.post(
+                `${API_URL}/terrain/${encodeURIComponent(slug)}`,
+                { name, region, website },
+                { headers: { Authorization: `Bearer ${token}` } }
+            );
+            if (response.data.found) {
+                setTerrainBySlug((current) => ({ ...current, [slug]: response.data }));
+                terrainRequest = null;
+            } else {
+                setNotFound((current) => new Set(current).add(slug));
+            }
+        } catch (requestError) {
+            if (requestError.response?.status === 401) {
+                // The backend rejected the token (e.g. its secret changed), so sign out.
+                localStorage.removeItem('accessToken');
+                return false;
+            }
+            setLookupError(requestError.response?.data?.message || 'Could not reach the server. Make sure the backend is running.');
+        } finally {
+            setLookingUp('');
+        }
+        return true;
+    }, []);
+
+    return { terrainBySlug, notFound, lookingUp, lookupError, lookUp };
+}
+
+const SKILL_LEVEL_KEY = 'skiFindSkillLevel';
+
+// The visitor's skill level, remembered in this browser so recommendations
+// follow them from resort to resort. '' until they pick one.
+export function useSkillLevel() {
+    const [skillLevel, setSkillLevelState] = useState(() => {
+        try {
+            return localStorage.getItem(SKILL_LEVEL_KEY) || '';
+        } catch (error) {
+            return '';
+        }
+    });
+
+    const setSkillLevel = useCallback((level) => {
+        setSkillLevelState(level);
+        try {
+            if (level) localStorage.setItem(SKILL_LEVEL_KEY, level);
+            else localStorage.removeItem(SKILL_LEVEL_KEY);
+        } catch (error) {
+            // Storage blocked; the choice still applies for this visit.
+        }
+    }, []);
+
+    return [skillLevel, setSkillLevel];
+}
+
+// Conditions reports stored by the backend, loaded once per browser session.
+let conditionsRequest = null;
+
+function loadStoredConditions() {
+    if (!conditionsRequest) {
+        conditionsRequest = axios.get(`${API_URL}/conditions`)
+            .then((response) => Object.fromEntries(response.data.map((report) => [report.resortSlug, report])))
+            .catch(() => {
+                conditionsRequest = null;
+                return {};
+            });
+    }
+    return conditionsRequest;
+}
+
+// Current conditions ({ [slug]: report }) plus `refresh(resort)`, which asks
+// the backend to research one with Claude. Reports carry `stale: true` once
+// they are old enough to refresh. `loaded` is false until the stored reports
+// have arrived.
+export function useConditions() {
+    const [conditionsBySlug, setConditionsBySlug] = useState({});
+    const [loaded, setLoaded] = useState(false);
+    const [refreshing, setRefreshing] = useState('');
+    const [refreshError, setRefreshError] = useState('');
+
+    useEffect(() => {
+        let active = true;
+        loadStoredConditions().then((stored) => {
+            if (!active) return;
+            setConditionsBySlug((current) => ({ ...stored, ...current }));
+            setLoaded(true);
+        });
+        return () => { active = false; };
+    }, []);
+
+    // Resolves false when the user must log in first.
+    const refresh = useCallback(async (resort) => {
+        // getUserInfo clears an expired token, so this catches stale logins too.
+        const token = getUserInfo() && localStorage.getItem('accessToken');
+        if (!token) return false;
+
+        setRefreshing(resort.slug);
+        setRefreshError('');
+        try {
+            const { slug, name, region, website } = resort;
+            const response = await axios.post(
+                `${API_URL}/conditions/${encodeURIComponent(slug)}`,
+                { name, region, website },
+                { headers: { Authorization: `Bearer ${token}` } }
+            );
+            setConditionsBySlug((current) => ({ ...current, [slug]: response.data }));
+            // The next page load should see this report too.
+            conditionsRequest = null;
+        } catch (requestError) {
+            if (requestError.response?.status === 401) {
+                localStorage.removeItem('accessToken');
+                return false;
+            }
+            setRefreshError(requestError.response?.data?.message || 'Could not reach the server. Make sure the backend is running.');
+        } finally {
+            setRefreshing('');
+        }
+        return true;
+    }, []);
+
+    return { conditionsBySlug, loaded, refreshing, refreshError, refresh };
 }

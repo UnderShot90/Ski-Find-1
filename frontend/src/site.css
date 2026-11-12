@@ -519,6 +519,34 @@ input {
     border-color: #e1e6df !important;
 }
 
+.site-account-page .profile-skill-picker {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 6px;
+    margin-top: 8px;
+}
+
+.site-account-page > div .profile-skill-picker button {
+    min-height: 38px;
+    border: 1px solid #cbd5ca;
+    background: #f6f7f2;
+    color: #25382d;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.site-account-page > div .profile-skill-picker button:hover {
+    border-color: #234333;
+    background: #edf2df;
+    color: #20362a;
+}
+
+.site-account-page > div .profile-skill-picker button.is-active {
+    border-color: #234333;
+    background: #234333;
+    color: #d7ef63;
+}
+
 .site-profile-page .fixed > div {
     border-radius: 4px;
     background: #f6f7f1;

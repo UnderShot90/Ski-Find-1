@@ -1,10 +1,14 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import getUserInfo from "../../utilities/decodeJwt";
+import { useSkillLevel } from "../../utilities/resortHooks";
+import { SKILL_LEVELS, getSkillLevel } from "../../utilities/resorts";
 
 const PrivateUserProfile = () => {
   const [showModal, setShowModal] = useState(false);
   const [user, setUser] = useState({});
+  const [skillLevel, setSkillLevel] = useSkillLevel();
+  const selectedLevel = getSkillLevel(skillLevel);
   const navigate = useNavigate();
 
   const handleLogout = () => {
@@ -50,8 +54,24 @@ const PrivateUserProfile = () => {
             <p className="text-white font-medium break-all">{user.email}</p>
           </div>
           <div className="border-t border-spotify-hover pt-3">
-            <p className="text-xs uppercase tracking-widest text-spotify-muted">User ID</p>
-            <p className="text-white font-mono text-sm break-all">{user.id}</p>
+            <p id="profile-skill-label" className="text-xs uppercase tracking-widest text-spotify-muted">Your skill level</p>
+            {/* Same setting the resort pages use for recommendations. */}
+            <div className="profile-skill-picker" role="group" aria-labelledby="profile-skill-label">
+              {SKILL_LEVELS.map((level) => (
+                <button
+                  key={level.id}
+                  type="button"
+                  className={skillLevel === level.id ? "is-active" : ""}
+                  aria-pressed={skillLevel === level.id}
+                  onClick={() => setSkillLevel(skillLevel === level.id ? "" : level.id)}
+                >
+                  {level.label}
+                </button>
+              ))}
+            </div>
+            <p className="text-spotify-muted text-sm mt-2">
+              {selectedLevel ? selectedLevel.summary : "Pick a level to get resort recommendations that fit you."}
+            </p>
           </div>
         </div>
 

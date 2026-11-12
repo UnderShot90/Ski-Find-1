@@ -3,8 +3,8 @@ import axios from 'axios';
 import { Link, useNavigate } from 'react-router-dom';
 import ResortMap from '../ResortMap';
 import { REGION_NAMES } from '../../data/resortCatalog';
-import { API_URL, useResortDirectory, useSavedResorts } from '../../utilities/resortHooks';
-import { formatLocation, hasCoordinates, isEastCoast } from '../../utilities/resorts';
+import { API_URL, useConditions, useResortDirectory, useSavedResorts } from '../../utilities/resortHooks';
+import { CONDITION_SORTS, formatConditions, formatLocation, hasCoordinates, isEastCoast, sortByConditions } from '../../utilities/resorts';
 import '../../css/resorts.css';
 
 // Directory views. East Coast is the default because that is Ski Find's focus.
@@ -18,11 +18,14 @@ const ResortsPage = () => {
     const navigate = useNavigate();
     const { resorts, loading, notice } = useResortDirectory();
     const { token, savedSlugs, savingSlug, savedError, toggleSaved } = useSavedResorts();
+    const { conditionsBySlug } = useConditions();
 
     // Filters
     const [query, setQuery] = useState('');
     const [scope, setScope] = useState('east');
     const [stateFilter, setStateFilter] = useState('');
+    // 'name', 'distance' (after a nearby search), or a CONDITION_SORTS id.
+    const [sortBy, setSortBy] = useState('name');
 
     // "Find nearby" search (driving distances come from HERE via the backend)
     const [location, setLocation] = useState('');
@@ -41,12 +44,14 @@ const ResortsPage = () => {
 
     const normalizedQuery = query.trim().toLowerCase();
     const nearbyBySlug = new Map((nearbyResorts || []).map((resort) => [resort.slug, resort]));
-    const visibleResorts = scopedResorts
+    const matchingResorts = scopedResorts
         .filter((resort) => !nearbyResorts || nearbyBySlug.has(resort.slug))
-        .filter((resort) => `${resort.name} ${formatLocation(resort)} ${resort.region}`.toLowerCase().includes(normalizedQuery))
-        .sort((first, second) => (nearbyResorts
-            ? nearbyBySlug.get(first.slug).distance.value - nearbyBySlug.get(second.slug).distance.value
-            : first.name.localeCompare(second.name)));
+        .filter((resort) => `${resort.name} ${formatLocation(resort)} ${resort.region}`.toLowerCase().includes(normalizedQuery));
+    const visibleResorts = nearbyResorts && sortBy === 'distance'
+        ? [...matchingResorts].sort((first, second) => nearbyBySlug.get(first.slug).distance.value - nearbyBySlug.get(second.slug).distance.value)
+        : sortByConditions(matchingResorts, sortBy, conditionsBySlug);
+    const conditionSort = CONDITION_SORTS.find((option) => option.id === sortBy);
+    const reportedCount = matchingResorts.filter((resort) => conditionsBySlug[resort.slug]?.found).length;
 
     // Only states that actually have resorts get a filter option.
     const eastCoastStates = Object.keys(REGION_NAMES).filter((code) => resorts.some((resort) => isEastCoast(resort) && resort.region === code));
@@ -66,6 +71,7 @@ const ResortsPage = () => {
             setNearbyResorts(response.data.resorts);
             setNearbyOrigin(response.data.origin);
             setNearbyPosition(response.data.originPosition);
+            setSortBy('distance');
         } catch (requestError) {
             setNearbyError(requestError.response?.data?.error || 'Could not find nearby resorts. Make sure the backend server is running.');
         } finally {
@@ -75,6 +81,7 @@ const ResortsPage = () => {
 
     function clearNearby() {
         setNearbyResorts(null);
+        setSortBy((current) => (current === 'distance' ? 'name' : current));
         setNearbyOrigin('');
         setNearbyPosition(null);
     }
@@ -115,7 +122,7 @@ const ResortsPage = () => {
                     <div>
                         <p className="resorts-eyebrow">Ski Find / Directory</p>
                         <h1>Resorts</h1>
-                        <p className="resorts-heading-summary">From the Green Mountains to the Smokies: pick a mountain to see its stats, live lifts, and official site.</p>
+                        <p className="resorts-heading-summary">From the Green Mountains to the Smokies: pick a mountain to see its stats, live conditions, and official site.</p>
                     </div>
                     <p className="resorts-count">{scopedResorts.length} destinations</p>
                 </header>
@@ -139,6 +146,14 @@ const ResortsPage = () => {
                             </select>
                         </label>
                     )}
+                    <label className="resorts-state">
+                        <span className="sr-only">Sort resorts</span>
+                        <select value={sortBy} onChange={(event) => setSortBy(event.target.value)}>
+                            <option value="name">Sort: Name (A–Z)</option>
+                            {nearbyResorts && <option value="distance">Sort: Closest drive</option>}
+                            {CONDITION_SORTS.map((option) => <option key={option.id} value={option.id}>Sort: {option.label}</option>)}
+                        </select>
+                    </label>
                     <div className="resorts-tabs" role="group" aria-label="Show resorts">
                         {SCOPES.map((option) => (
                             <button
@@ -174,6 +189,12 @@ const ResortsPage = () => {
                 </form>
                 {nearbyOrigin && <p className="resorts-nearby-status" role="status">Driving distances from {nearbyOrigin}. Showing up to 25 closest resorts.</p>}
 
+                {conditionSort && (
+                    <p className="resorts-nearby-status" role="status">
+                        Sorted by {conditionSort.label.toLowerCase()} from AI-researched conditions. {reportedCount} of {matchingResorts.length} resorts have a report; the rest are listed last.
+                    </p>
+                )}
+
                 {message && <p className="resorts-message" role="alert">{message}</p>}
 
                 <section className="resorts-map-section" aria-labelledby="resorts-map-title">
@@ -205,6 +226,8 @@ const ResortsPage = () => {
                     {visibleResorts.map((resort, index) => {
                         const saved = savedSlugs.has(resort.slug);
                         const route = nearbyBySlug.get(resort.slug);
+                        const report = conditionsBySlug[resort.slug];
+                        const current = report?.found ? formatConditions(report) : null;
                         return (
                             <article className="resort-row" key={resort.slug}>
                                 <div className="resort-index" aria-hidden="true">{String(index + 1).padStart(2, '0')}</div>
@@ -216,6 +239,17 @@ const ResortsPage = () => {
                                             {resort.verticalFt && <li>{resort.verticalFt.toLocaleString()} ft vertical</li>}
                                             {resort.trails && <li>{resort.trails} trails</li>}
                                             {resort.lifts && <li>{resort.lifts} lifts</li>}
+                                        </ul>
+                                    )}
+                                    {current && (
+                                        <ul className="resort-quick-stats resort-live-stats" aria-label={`${resort.name} current conditions`}>
+                                            {report.operatingStatus === 'closed' && <li className="is-closed">Closed</li>}
+                                            {current.temp && <li>{current.temp}</li>}
+                                            {current.newSnow && <li>{current.newSnow} new</li>}
+                                            {current.baseDepth && <li>{current.baseDepth} base</li>}
+                                            {current.lifts && <li>{current.lifts} lifts</li>}
+                                            {current.trails && <li>{current.trails} trails</li>}
+                                            {current.ticket && <li>{current.ticket} ticket</li>}
                                         </ul>
                                     )}
                                     {route && <p className="resort-distance">{route.distance.text} · {route.duration.text}</p>}

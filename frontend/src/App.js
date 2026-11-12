@@ -11,6 +11,7 @@ import Signup from "./components/pages/registerPage";
 import PrivateUserProfile from "./components/pages/privateUserProfilePage";
 import ResortsPage from "./components/pages/resortsPage";
 import ResortDetailPage from "./components/pages/resortDetailPage";
+import AdminReportsPage from "./components/pages/adminReportsPage";
 import getUserInfo from "./utilities/decodeJwt";
 
 export const UserContext = createContext();
@@ -34,6 +35,7 @@ const App = () => {
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
           <Route path="/privateUserProfile" element={<PrivateUserProfile />} />
+          <Route path="/admin/reports" element={<AdminReportsPage />} />
         </Routes>
       </UserContext.Provider>
     </>
